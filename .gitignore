@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.env
+.env.local
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.claude/
+.notes/
