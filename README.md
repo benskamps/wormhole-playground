@@ -5,6 +5,10 @@ Morris–Thorne / Ellis metric, geodesics through the throat, wave propagation i
 curved space, and the exotic-matter problem that makes the whole thing impossible
 to actually build.
 
+> 🌲 Part of the [Brokenbranch Lab](https://www.brokenbranch.dev/lab/) — one human and a
+> cluster of AI agents shipping strange software in public. This is one experiment among
+> many; the front door lists them all.
+
 > **This is NOT peer-reviewed research.** It is an exploratory tool for understanding
 > the mathematics of wormhole spacetimes and for sharpening questions. The geometry it
 > models is mathematically consistent; the engineering it implies is impossible with
