@@ -1,1717 +1,504 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wormhole Physics Playground</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wormhole Physics Playground · Through the Drainhole</title>
+<!-- Inline data-URI favicon (no network fetch) — keeps the console clean and
+     honors the zero-fetch / file:// constraint. A teal Einstein-ring glyph. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%2304040a'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='9'%20fill='none'%20stroke='%2300f2fe'%20stroke-width='2.5'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='3.2'%20fill='%234facfe'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%2304040a'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='9'%20fill='none'%20stroke='%2300f2fe'%20stroke-width='2.5'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='3.2'%20fill='%234facfe'/%3E%3C/svg%3E">
+<!--
+  ============================================================================
+  playground.html  —  INTEGRATOR. Shell, layout, rAF loop, module wiring.
+  ----------------------------------------------------------------------------
+  "Through the Drainhole": a per-pixel geodesic-raytraced Ellis wormhole.
+  Every pixel in the hero view RK4-integrates a real null geodesic of
+      ds² = −dt² + dl² + (l²+r0²)dΩ²   (Ellis drainhole, Φ=0)
+  so the Einstein ring, ghost-image winding, and the window into a second
+  procedurally distinct universe all EMERGE from the integration. The house
+  mascot — a glazed DOUGHNUT — crosses the throat on a real timelike geodesic.
 
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: #0a0a12;
-            color: #e0e0e0;
-            overflow: hidden;
-            height: 100vh;
-        }
+  HARD CONSTRAINTS honored: file:// double-click works; zero deps; no build;
+  no fetch; no ES modules. Four classic <script src> files, each exposing
+  exactly one window-global. All GLSL lives in JS template strings.
 
-        #app {
-            display: grid;
-            grid-template-rows: 50px 1fr 60px;
-            height: 100vh;
-        }
+  Load order (dependency order):  physics → gl → panels → ui
+  ============================================================================
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#0a0a12; --bg2:#12121e; --panel:#0d0d18;
+    --line:#2a2a4a; --line2:#1c1c30;
+    --accent:#4facfe; --accent2:#00f2fe;
+    --ink:#e0e0e0; --ink-muted:#8888aa; --ink-faint:#6a6a8a;
+    --warm:#ffb37a;
+  }
+  html,body{height:100%}
+  body{
+    font-family:'Segoe UI',system-ui,sans-serif;
+    background:var(--bg); color:var(--ink);
+    overflow:hidden; height:100vh;
+  }
+  #app{display:grid; grid-template-rows:52px 1fr 56px; height:100vh}
 
-        /* Header */
-        header {
-            background: linear-gradient(90deg, #1a1a2e, #16213e);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            border-bottom: 1px solid #2a2a4a;
-        }
+  /* ---- header ---- */
+  header{
+    background:linear-gradient(90deg,#16182e,#101a30);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 18px; border-bottom:1px solid var(--line); z-index:40;
+  }
+  header .brand{display:flex; align-items:baseline; gap:12px; min-width:0}
+  header h1{
+    font-size:1.18rem; font-weight:600; white-space:nowrap;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  header .sub{
+    font-size:.72rem; color:var(--ink-faint); font-family:ui-monospace,monospace;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  header .hdr-actions{display:flex; gap:9px; flex:0 0 auto}
+  header .hdr-actions button{
+    padding:7px 16px; border-radius:5px; cursor:pointer; font-size:.82rem;
+    font-family:inherit; border:1px solid var(--accent); color:var(--accent);
+    background:linear-gradient(90deg,#4facfe22,#00f2fe22); transition:background .15s;
+  }
+  header .hdr-actions button:hover{background:linear-gradient(90deg,#4facfe44,#00f2fe44)}
+  header .hdr-actions button.hot{
+    border-color:#ff8a4c; color:#ffb37a;
+    background:linear-gradient(90deg,#ff8a4c22,#ffd24c22);
+  }
+  header .hdr-actions button.hot:hover{background:linear-gradient(90deg,#ff8a4c44,#ffd24c44)}
 
-        header h1 {
-            font-size: 1.4rem;
-            font-weight: 500;
-            background: linear-gradient(90deg, #4facfe, #00f2fe);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+  /* ---- main grid ---- */
+  main{display:grid; grid-template-columns:264px 1fr 320px; overflow:hidden; min-height:0}
 
-        .mode-selector {
-            display: flex;
-            gap: 10px;
-        }
+  /* ---- sidebar (controls) ---- */
+  #sidebar{
+    background:var(--bg2); padding:15px 14px; overflow-y:auto;
+    border-right:1px solid var(--line);
+  }
+  #sidebar::-webkit-scrollbar{width:8px}
+  #sidebar::-webkit-scrollbar-thumb{background:#2a2a44; border-radius:4px}
 
-        .mode-btn {
-            padding: 6px 14px;
-            background: transparent;
-            border: 1px solid #3a3a5a;
-            color: #8888aa;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.2s;
-        }
+  /* ---- hero ---- */
+  #hero-wrap{position:relative; overflow:hidden; background:#04040a; min-width:0}
+  #hero{display:block; width:100%; height:100%}
 
-        .mode-btn:hover {
-            border-color: #4facfe;
-            color: #4facfe;
-        }
+  /* ---- inspector rail ---- */
+  #rail{
+    background:var(--bg2); border-left:1px solid var(--line);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .rail-panel{
+    display:flex; flex-direction:column; flex:1 1 0; min-height:0;
+    border-bottom:1px solid var(--line2); padding:8px 10px 4px;
+  }
+  .rail-panel:last-child{border-bottom:none}
+  .rail-panel > .rail-title{
+    font-size:.66rem; text-transform:uppercase; letter-spacing:1px;
+    color:var(--ink-faint); margin-bottom:5px; flex:0 0 auto;
+  }
+  .rail-panel > canvas{flex:1 1 0; width:100%; min-height:0; display:block}
 
-        .mode-btn.active {
-            background: #4facfe22;
-            border-color: #4facfe;
-            color: #4facfe;
-        }
+  /* ---- footer (metric equations) ---- */
+  footer{
+    background:linear-gradient(90deg,#101225,#0c1426);
+    border-top:1px solid var(--line); display:flex; align-items:center;
+    gap:22px; padding:0 18px; overflow-x:auto; z-index:40;
+  }
+  footer .eq{
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.74rem; color:var(--ink-muted); white-space:nowrap;
+  }
+  footer .eq b{color:var(--accent)}
+  footer .eq .neg{color:#ff7a8a}
+  footer .brandtag{margin-left:auto; font-size:.68rem; color:var(--ink-faint); white-space:nowrap}
 
-        /* Main area */
-        main {
-            display: grid;
-            grid-template-columns: 260px 1fr;
-            overflow: hidden;
-        }
+  /* collapsible drawers on narrow screens */
+  #sidebar-toggle,#rail-toggle{display:none}
 
-        /* Controls sidebar */
-        .controls {
-            background: #12121e;
-            padding: 15px;
-            overflow-y: auto;
-            border-right: 1px solid #2a2a4a;
-        }
+  @media (max-width:1100px){
+    main{grid-template-columns:240px 1fr}
+    #rail{
+      position:fixed; right:0; top:52px; bottom:56px; width:320px; z-index:45;
+      transform:translateX(100%); transition:transform .2s; box-shadow:-8px 0 24px rgba(0,0,0,.5);
+    }
+    #rail.open{transform:translateX(0)}
+    #rail-toggle{
+      display:block; position:fixed; right:14px; top:64px; z-index:46;
+      padding:7px 12px; border-radius:5px; cursor:pointer; font-size:.78rem;
+      background:#16182e; border:1px solid var(--accent); color:var(--accent);
+    }
+  }
+  @media (max-width:720px){
+    main{grid-template-columns:1fr}
+    #sidebar{
+      position:fixed; left:0; top:52px; bottom:56px; width:264px; z-index:45;
+      transform:translateX(-100%); transition:transform .2s;
+    }
+    #sidebar.open{transform:translateX(0)}
+    #sidebar-toggle{
+      display:block; position:fixed; left:14px; top:64px; z-index:46;
+      padding:7px 12px; border-radius:5px; cursor:pointer; font-size:.78rem;
+      background:#16182e; border:1px solid var(--accent); color:var(--accent);
+    }
+    header h1{font-size:1rem}
+    header .sub{display:none}
+  }
 
-        .control-group {
-            margin-bottom: 20px;
-        }
-
-        .control-group h3 {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #6a6a8a;
-            margin-bottom: 12px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #2a2a4a;
-        }
-
-        .control-row {
-            margin-bottom: 12px;
-        }
-
-        .control-row label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            margin-bottom: 4px;
-            color: #aaaacc;
-        }
-
-        .control-row label span.value {
-            color: #4facfe;
-            font-family: monospace;
-        }
-
-        input[type="range"] {
-            width: 100%;
-            height: 6px;
-            -webkit-appearance: none;
-            background: #2a2a4a;
-            border-radius: 3px;
-            outline: none;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            background: #4facfe;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 10px #4facfe66;
-        }
-
-        .checkbox-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
-            font-size: 0.85rem;
-        }
-
-        .checkbox-row input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #4facfe;
-        }
-
-        .preset-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .preset-btn {
-            padding: 8px;
-            background: #1a1a2e;
-            border: 1px solid #3a3a5a;
-            color: #aaaacc;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.2s;
-        }
-
-        .preset-btn:hover {
-            background: #2a2a4e;
-            border-color: #4facfe;
-            color: #4facfe;
-        }
-
-        .action-btn {
-            width: 100%;
-            padding: 10px;
-            background: linear-gradient(90deg, #4facfe33, #00f2fe33);
-            border: 1px solid #4facfe;
-            color: #4facfe;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            margin-top: 8px;
-            transition: all 0.2s;
-        }
-
-        .action-btn:hover {
-            background: linear-gradient(90deg, #4facfe55, #00f2fe55);
-        }
-
-        /* Visualization panels */
-        .viz-area {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 2px;
-            background: #1a1a2e;
-            padding: 2px;
-        }
-
-        .panel {
-            background: #0a0a12;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .panel canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        .panel-label {
-            position: absolute;
-            top: 8px;
-            left: 10px;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #6a6a8a;
-            background: #0a0a12cc;
-            padding: 3px 8px;
-            border-radius: 3px;
-            z-index: 10;
-        }
-
-        .panel-stats {
-            position: absolute;
-            bottom: 8px;
-            left: 10px;
-            font-size: 0.75rem;
-            font-family: monospace;
-            color: #4facfe;
-            background: #0a0a12cc;
-            padding: 4px 8px;
-            border-radius: 3px;
-            z-index: 10;
-        }
-
-        /* Info bar */
-        footer {
-            background: #12121e;
-            border-top: 1px solid #2a2a4a;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
-            font-size: 0.8rem;
-            font-family: monospace;
-            color: #8888aa;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-
-        footer .metric {
-            margin-right: 30px;
-        }
-
-        footer .metric .label {
-            color: #6a6a8a;
-        }
-
-        footer .metric .equation {
-            color: #4facfe;
-        }
-
-        .warning {
-            color: #ff6b6b;
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .warning.hidden {
-            display: none;
-        }
-
-        /* CTC warning flash */
-        @keyframes ctc-flash {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-
-        .ctc-warning {
-            animation: ctc-flash 0.5s infinite;
-        }
-    </style>
+  /* boot error (only if a module fails to load) */
+  #boot-error{
+    position:fixed; inset:0; z-index:99; display:none;
+    align-items:center; justify-content:center; padding:30px;
+    background:radial-gradient(circle at 50% 40%,#141426,#08080f);
+    font-family:system-ui,sans-serif; text-align:center;
+  }
+  #boot-error .card{
+    max-width:520px; background:linear-gradient(160deg,#181830,#0d0d18);
+    border:1px solid #3a2c4c; border-radius:12px; padding:28px 32px;
+  }
+  #boot-error h2{color:#ff8a8a; margin-bottom:12px; font-size:1.15rem}
+  #boot-error p{color:#aab6d6; font-size:.88rem; line-height:1.55; margin-bottom:8px}
+  #boot-error code{font-family:ui-monospace,monospace; color:#7ec8ff; font-size:.8rem}
+</style>
 </head>
 <body>
-    <div id="app">
-        <header>
-            <h1>WORMHOLE PHYSICS PLAYGROUND</h1>
-            <div class="mode-selector">
-                <button class="mode-btn active" data-mode="explore">Explore</button>
-                <button class="mode-btn" data-mode="wave">Wave Propagation</button>
-                <button class="mode-btn" data-mode="erepr">ER=EPR</button>
-            </div>
-        </header>
-
-        <main>
-            <aside class="controls">
-                <div class="control-group">
-                    <h3>Wormhole Geometry</h3>
-                    <div class="control-row">
-                        <label>Throat Radius r₀ <span class="value" id="val-r0">1.0</span></label>
-                        <input type="range" id="slider-r0" min="0.2" max="3" step="0.1" value="1.0">
-                    </div>
-                    <div class="control-row">
-                        <label>Redshift Φ <span class="value" id="val-phi">0.0</span></label>
-                        <input type="range" id="slider-phi" min="0" max="1.5" step="0.1" value="0">
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h3>Rotation (Kerr-like)</h3>
-                    <div class="control-row">
-                        <label>Spin a/M <span class="value" id="val-spin">0.0</span></label>
-                        <input type="range" id="slider-spin" min="0" max="0.95" step="0.05" value="0">
-                    </div>
-                    <div class="checkbox-row">
-                        <input type="checkbox" id="chk-framedrag" checked>
-                        <label for="chk-framedrag">Show Frame Dragging</label>
-                    </div>
-                    <div class="checkbox-row">
-                        <input type="checkbox" id="chk-ergo">
-                        <label for="chk-ergo">Show Ergosphere</label>
-                    </div>
-                    <div class="checkbox-row">
-                        <input type="checkbox" id="chk-ctc">
-                        <label for="chk-ctc">Show CTCs</label>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h3>Wave / Particle</h3>
-                    <div class="control-row">
-                        <label>Angular Momentum m <span class="value" id="val-m">0</span></label>
-                        <input type="range" id="slider-m" min="0" max="5" step="1" value="0">
-                    </div>
-                    <div class="control-row">
-                        <label>Position <span class="value" id="val-pos">8.0</span></label>
-                        <input type="range" id="slider-pos" min="-10" max="10" step="0.5" value="8">
-                    </div>
-                    <div class="control-row">
-                        <label>Velocity <span class="value" id="val-vel">-0.8</span></label>
-                        <input type="range" id="slider-vel" min="-1" max="1" step="0.1" value="-0.8">
-                    </div>
-                    <button class="action-btn" id="btn-launch">Launch Wave Packet</button>
-                </div>
-
-                <div class="control-group">
-                    <h3>Stability</h3>
-                    <div class="control-row">
-                        <label>Exotic Strength <span class="value" id="val-exotic">1.0</span></label>
-                        <input type="range" id="slider-exotic" min="0.1" max="2" step="0.1" value="1">
-                    </div>
-                    <div class="control-row">
-                        <label>Collapse Rate <span class="value" id="val-collapse">1.0</span></label>
-                        <input type="range" id="slider-collapse" min="0.1" max="2" step="0.1" value="1">
-                    </div>
-                    <div class="checkbox-row">
-                        <input type="checkbox" id="chk-dynamic">
-                        <label for="chk-dynamic">Dynamic Throat</label>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h3>Presets</h3>
-                    <div class="preset-buttons">
-                        <button class="preset-btn" data-preset="ellis">Ellis Simple</button>
-                        <button class="preset-btn" data-preset="rotating">Rotating</button>
-                        <button class="preset-btn" data-preset="ctc">CTC Demo</button>
-                        <button class="preset-btn" data-preset="erepr">ER=EPR</button>
-                    </div>
-                </div>
-
-                <div class="control-group" id="erepr-controls" style="display: none;">
-                    <h3>ER=EPR Controls</h3>
-                    <div class="control-row">
-                        <label>Entanglement <span class="value" id="val-entangle">0%</span></label>
-                        <input type="range" id="slider-entangle" min="0" max="100" step="5" value="0">
-                    </div>
-                    <button class="action-btn" id="btn-measure-a">Measure Qubit A</button>
-                    <button class="action-btn" id="btn-measure-b">Measure Qubit B</button>
-                </div>
-            </aside>
-
-            <div class="viz-area">
-                <div class="panel" id="panel-3d">
-                    <span class="panel-label">3D Embedding</span>
-                    <canvas id="canvas-3d"></canvas>
-                    <div class="panel-stats" id="stats-3d">Drag to rotate</div>
-                </div>
-                <div class="panel" id="panel-2d">
-                    <span class="panel-label">Cross-Section</span>
-                    <canvas id="canvas-2d"></canvas>
-                    <div class="panel-stats" id="stats-2d"></div>
-                </div>
-                <div class="panel" id="panel-time">
-                    <span class="panel-label">Time Dilation</span>
-                    <canvas id="canvas-time"></canvas>
-                    <div class="panel-stats" id="stats-time"></div>
-                </div>
-                <div class="panel" id="panel-wave">
-                    <span class="panel-label">Wave / ER=EPR</span>
-                    <canvas id="canvas-wave"></canvas>
-                    <div class="panel-stats" id="stats-wave"></div>
-                </div>
-            </div>
-        </main>
-
-        <footer>
-            <div class="metric">
-                <span class="label">Metric: </span>
-                <span class="equation" id="eq-metric">ds² = -e^(2Φ)dt² + dl² + r²dΩ²</span>
-            </div>
-            <div class="metric">
-                <span class="label">r(l) = </span>
-                <span class="equation" id="eq-r">√(l² + r₀²)</span>
-            </div>
-            <div class="metric">
-                <span class="label">Energy: </span>
-                <span class="equation" id="eq-energy">ρ = -r₀²/(8πr⁴) < 0 (exotic)</span>
-            </div>
-            <div class="warning hidden" id="ctc-warning">
-                <span class="ctc-warning">⚠ CLOSED TIMELIKE CURVES PRESENT</span>
-            </div>
-        </footer>
+<div id="app">
+  <header>
+    <div class="brand">
+      <h1>WORMHOLE&nbsp;PHYSICS&nbsp;PLAYGROUND</h1>
+      <span class="sub">Through the Drainhole · per-pixel Ellis null geodesics · honest physics</span>
     </div>
-
-    <script>
-    // ============================================================
-    // STATE MANAGEMENT
-    // ============================================================
-    const State = {
-        // Geometry
-        r0: 1.0,
-        redshiftPhi: 0.0,
-        spinParam: 0.0,
-
-        // Wave
-        angularMomentum: 0,
-        wavePosition: 8.0,
-        waveVelocity: -0.8,
-        waveRunning: false,
-
-        // Stability
-        exoticStrength: 1.0,
-        collapseRate: 1.0,
-        dynamicThroat: false,
-        throatVelocity: 0,
-
-        // Display
-        showFrameDrag: true,
-        showErgosphere: false,
-        showCTC: false,
-        mode: 'explore',
-
-        // ER=EPR
-        entanglement: 0,
-        qubitA: { measured: false, value: null },
-        qubitB: { measured: false, value: null },
-
-        // Camera
-        camera: { theta: 0.3, phi: 0.4, zoom: 1.0 },
-
-        // Time
-        time: 0,
-        coordinateTime: 0,
-        properTime: 0,
-
-        // Particles
-        particles: [],
-
-        // Wave data
-        waveL: null,
-        wavePhi: null,
-        wavePhiOld: null
-    };
-
-    // ============================================================
-    // PHYSICS: MORRIS-THORNE METRIC
-    // ============================================================
-    const Metric = {
-        // Radial coordinate from proper distance
-        rFromL(l, r0) {
-            return Math.sqrt(l * l + r0 * r0);
-        },
-
-        // Inverse: l from r
-        lFromR(r, r0) {
-            if (r < r0) return 0;
-            return Math.sqrt(r * r - r0 * r0);
-        },
-
-        // Shape function b(r)
-        shapeFunction(r, r0) {
-            return r0 * r0 / Math.max(r, r0 * 0.1);
-        },
-
-        // Redshift function Φ(r)
-        redshiftFunction(r, r0, phi0) {
-            if (phi0 === 0) return 0;
-            return -phi0 * r0 / Math.max(r, r0 * 0.1);
-        },
-
-        // Energy density (exotic matter)
-        energyDensity(r, r0) {
-            return -r0 * r0 / (8 * Math.PI * Math.pow(r, 4));
-        },
-
-        // Time dilation factor dτ/dt
-        timeDilationFactor(r, r0, phi0) {
-            const Phi = this.redshiftFunction(r, r0, phi0);
-            return Math.exp(Phi);
-        },
-
-        // Effective potential for waves with angular momentum m
-        effectivePotential(l, r0, m) {
-            if (m === 0) return 0;
-            const r = this.rFromL(l, r0);
-            return m * m / (r * r);
-        }
-    };
-
-    // ============================================================
-    // PHYSICS: ROTATING (KERR-LIKE) WORMHOLE
-    // ============================================================
-    const KerrMetric = {
-        // Frame dragging angular velocity
-        frameDragOmega(r, theta, r0, a) {
-            if (a === 0) return 0;
-            const r2 = r * r;
-            const a2 = a * a;
-            const sin2 = Math.sin(theta) ** 2;
-            const Sigma = r2 + a2 * Math.cos(theta) ** 2;
-            return 2 * a * r / (Sigma * Sigma / r + a2 + r2);
-        },
-
-        // Ergosphere radius (where g_tt = 0)
-        ergosphereRadius(theta, r0, a, M = 1) {
-            const cos2 = Math.cos(theta) ** 2;
-            return M + Math.sqrt(M * M - a * a * cos2);
-        },
-
-        // Check if CTCs exist at this location
-        hasCTC(r, theta, r0, a) {
-            // Simplified: CTCs when spin is very high and near throat
-            return a > 0.7 && r < r0 * 1.5;
-        }
-    };
-
-    // ============================================================
-    // PHYSICS: WAVE PROPAGATION
-    // ============================================================
-    const Wave = {
-        nPoints: 400,
-        lMin: -12,
-        lMax: 12,
-        dl: 0,
-
-        init() {
-            this.dl = (this.lMax - this.lMin) / (this.nPoints - 1);
-            State.waveL = new Float32Array(this.nPoints);
-            State.wavePhi = new Float32Array(this.nPoints * 2); // [re, im] pairs
-            State.wavePhiOld = new Float32Array(this.nPoints * 2);
-
-            for (let i = 0; i < this.nPoints; i++) {
-                State.waveL[i] = this.lMin + i * this.dl;
-            }
-        },
-
-        // Set initial Gaussian packet
-        setInitialConditions(l0, width, velocity) {
-            const k = velocity * 5; // wave number
-
-            for (let i = 0; i < this.nPoints; i++) {
-                const l = State.waveL[i];
-                const envelope = Math.exp(-Math.pow(l - l0, 2) / (2 * width * width));
-                const phase = k * l;
-
-                State.wavePhi[i * 2] = envelope * Math.cos(phase);
-                State.wavePhi[i * 2 + 1] = envelope * Math.sin(phase);
-                State.wavePhiOld[i * 2] = State.wavePhi[i * 2];
-                State.wavePhiOld[i * 2 + 1] = State.wavePhi[i * 2 + 1];
-            }
-        },
-
-        // Leapfrog evolution step
-        evolveStep(dt) {
-            const n = this.nPoints;
-            const dl2 = this.dl * this.dl;
-            const r0 = State.r0;
-            const m = State.angularMomentum;
-
-            // Compute effective potential
-            const V = new Float32Array(n);
-            for (let i = 0; i < n; i++) {
-                V[i] = Metric.effectivePotential(State.waveL[i], r0, m);
-            }
-
-            // New values
-            const newPhi = new Float32Array(n * 2);
-
-            for (let i = 1; i < n - 1; i++) {
-                // Laplacian
-                const lapRe = (State.wavePhi[(i+1)*2] - 2*State.wavePhi[i*2] + State.wavePhi[(i-1)*2]) / dl2;
-                const lapIm = (State.wavePhi[(i+1)*2+1] - 2*State.wavePhi[i*2+1] + State.wavePhi[(i-1)*2+1]) / dl2;
-
-                // Wave equation: d²φ/dt² = d²φ/dl² - V*φ
-                newPhi[i*2] = 2*State.wavePhi[i*2] - State.wavePhiOld[i*2] + dt*dt * (lapRe - V[i]*State.wavePhi[i*2]);
-                newPhi[i*2+1] = 2*State.wavePhi[i*2+1] - State.wavePhiOld[i*2+1] + dt*dt * (lapIm - V[i]*State.wavePhi[i*2+1]);
-            }
-
-            // Absorbing boundaries
-            const edge = 30;
-            for (let i = 0; i < edge; i++) {
-                const damp = 0.95 + 0.05 * (i / edge);
-                newPhi[i*2] *= damp;
-                newPhi[i*2+1] *= damp;
-                newPhi[(n-1-i)*2] *= damp;
-                newPhi[(n-1-i)*2+1] *= damp;
-            }
-
-            // Shift arrays
-            State.wavePhiOld.set(State.wavePhi);
-            State.wavePhi.set(newPhi);
-        },
-
-        // Calculate transmission/reflection
-        getTransmission() {
-            let leftAmp = 0, rightAmp = 0, total = 0;
-            const mid = Math.floor(this.nPoints / 2);
-
-            for (let i = 0; i < this.nPoints; i++) {
-                const amp = State.wavePhi[i*2]**2 + State.wavePhi[i*2+1]**2;
-                total += amp;
-                if (i < mid) leftAmp += amp;
-                else rightAmp += amp;
-            }
-
-            return {
-                transmission: leftAmp / Math.max(total, 0.001),
-                reflection: rightAmp / Math.max(total, 0.001)
-            };
-        }
-    };
-
-    // ============================================================
-    // PHYSICS: THROAT STABILITY
-    // ============================================================
-    const Stability = {
-        evolveStep(dt) {
-            if (!State.dynamicThroat) return;
-
-            const F_exotic = State.exoticStrength / (State.r0 ** 2 + 0.01);
-            const F_collapse = -State.collapseRate * State.r0;
-            const F_total = F_exotic + F_collapse;
-
-            State.throatVelocity += F_total * dt;
-            State.throatVelocity *= 0.99; // Damping
-            State.r0 += State.throatVelocity * dt;
-            State.r0 = Math.max(0.1, Math.min(3, State.r0));
-
-            // Update slider display
-            document.getElementById('slider-r0').value = State.r0;
-            document.getElementById('val-r0').textContent = State.r0.toFixed(2);
-        }
-    };
-
-    // ============================================================
-    // PHYSICS: ER=EPR
-    // ============================================================
-    const EREPR = {
-        measureQubit(which) {
-            const outcome = Math.random() < 0.5 ? 0 : 1;
-
-            if (State.entanglement > 50) {
-                // Correlated measurement
-                State.qubitA.measured = true;
-                State.qubitA.value = outcome;
-                State.qubitB.measured = true;
-                State.qubitB.value = outcome; // Same for Bell state
-            } else {
-                // Independent
-                if (which === 'A') {
-                    State.qubitA.measured = true;
-                    State.qubitA.value = outcome;
-                } else {
-                    State.qubitB.measured = true;
-                    State.qubitB.value = outcome;
-                }
-            }
-
-            return outcome;
-        },
-
-        reset() {
-            State.qubitA = { measured: false, value: null };
-            State.qubitB = { measured: false, value: null };
-        }
-    };
-
-    // ============================================================
-    // RENDERER: 3D EMBEDDING (Canvas 2D fallback)
-    // ============================================================
-    const Renderer3D = {
-        canvas: null,
-        ctx: null,
-        width: 0,
-        height: 0,
-
-        init(canvas) {
-            this.canvas = canvas;
-            this.ctx = canvas.getContext('2d');
-            this.resize();
-        },
-
-        resize() {
-            const rect = this.canvas.parentElement.getBoundingClientRect();
-            this.width = rect.width;
-            this.height = rect.height;
-            this.canvas.width = this.width * window.devicePixelRatio;
-            this.canvas.height = this.height * window.devicePixelRatio;
-            this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        },
-
-        // Project 3D to 2D with rotation
-        project(x, y, z) {
-            const cam = State.camera;
-
-            // Rotate around Y axis (theta)
-            const x1 = x * Math.cos(cam.theta) - z * Math.sin(cam.theta);
-            const z1 = x * Math.sin(cam.theta) + z * Math.cos(cam.theta);
-
-            // Rotate around X axis (phi)
-            const y1 = y * Math.cos(cam.phi) - z1 * Math.sin(cam.phi);
-            const z2 = y * Math.sin(cam.phi) + z1 * Math.cos(cam.phi);
-
-            // Perspective projection
-            const scale = 40 * cam.zoom;
-            const perspective = 5 / (5 + z2 * 0.3);
-
-            return {
-                x: this.width / 2 + x1 * scale * perspective,
-                y: this.height / 2 - y1 * scale * perspective,
-                z: z2,
-                visible: z2 > -10
-            };
-        },
-
-        render() {
-            const ctx = this.ctx;
-            ctx.clearRect(0, 0, this.width, this.height);
-
-            // Background gradient
-            const grad = ctx.createRadialGradient(
-                this.width/2, this.height/2, 0,
-                this.width/2, this.height/2, this.width/2
-            );
-            grad.addColorStop(0, '#0f0f1a');
-            grad.addColorStop(1, '#050508');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, this.width, this.height);
-
-            const r0 = State.r0;
-
-            // Draw wormhole surface
-            const nL = 60;
-            const nPhi = 40;
-            const lRange = 8;
-
-            // Collect all faces for depth sorting
-            const faces = [];
-
-            for (let i = 0; i < nL; i++) {
-                const l1 = -lRange + (i / nL) * 2 * lRange;
-                const l2 = -lRange + ((i + 1) / nL) * 2 * lRange;
-                const r1 = Metric.rFromL(l1, r0);
-                const r2 = Metric.rFromL(l2, r0);
-
-                for (let j = 0; j < nPhi; j++) {
-                    const phi1 = (j / nPhi) * 2 * Math.PI;
-                    const phi2 = ((j + 1) / nPhi) * 2 * Math.PI;
-
-                    // Four corners of quad
-                    const corners = [
-                        { x: r1 * Math.cos(phi1), y: r1 * Math.sin(phi1), z: l1 },
-                        { x: r2 * Math.cos(phi1), y: r2 * Math.sin(phi1), z: l2 },
-                        { x: r2 * Math.cos(phi2), y: r2 * Math.sin(phi2), z: l2 },
-                        { x: r1 * Math.cos(phi2), y: r1 * Math.sin(phi2), z: l1 }
-                    ];
-
-                    const projected = corners.map(c => this.project(c.x, c.y, c.z));
-                    const avgZ = (projected[0].z + projected[1].z + projected[2].z + projected[3].z) / 4;
-
-                    // Color based on proper distance from throat
-                    const avgL = (l1 + l2) / 2;
-                    const t = Math.min(1, Math.abs(avgL) / lRange);
-
-                    faces.push({ projected, avgZ, t, l: avgL });
-                }
-            }
-
-            // Sort by depth (painter's algorithm)
-            faces.sort((a, b) => a.avgZ - b.avgZ);
-
-            // Draw faces
-            for (const face of faces) {
-                const { projected, t, l } = face;
-
-                // Skip if behind camera
-                if (!projected[0].visible || !projected[2].visible) continue;
-
-                // Color: blue at throat, warm at edges
-                const hue = 200 - t * 150;
-                const sat = 70;
-                const light = 25 + t * 15;
-
-                // Throat glow
-                let throatGlow = Math.exp(-l * l / 2) * 0.3;
-                if (State.showCTC && KerrMetric.hasCTC(Metric.rFromL(l, r0), Math.PI/2, r0, State.spinParam)) {
-                    throatGlow = 0.5;
-                }
-
-                ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light + throatGlow * 30}%, 0.85)`;
-                ctx.strokeStyle = `hsla(${hue}, ${sat}%, ${light + 20}%, 0.3)`;
-                ctx.lineWidth = 0.5;
-
-                ctx.beginPath();
-                ctx.moveTo(projected[0].x, projected[0].y);
-                ctx.lineTo(projected[1].x, projected[1].y);
-                ctx.lineTo(projected[2].x, projected[2].y);
-                ctx.lineTo(projected[3].x, projected[3].y);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-            }
-
-            // Draw frame dragging arrows if enabled
-            if (State.showFrameDrag && State.spinParam > 0) {
-                this.drawFrameDragging();
-            }
-
-            // Draw ergosphere if enabled
-            if (State.showErgosphere && State.spinParam > 0) {
-                this.drawErgosphere();
-            }
-
-            // Draw particles
-            for (const p of State.particles) {
-                const proj = this.project(p.r * Math.cos(p.phi), p.r * Math.sin(p.phi), p.l);
-                if (proj.visible) {
-                    ctx.fillStyle = '#44ff88';
-                    ctx.shadowColor = '#44ff88';
-                    ctx.shadowBlur = 10;
-                    ctx.beginPath();
-                    ctx.arc(proj.x, proj.y, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                }
-            }
-        },
-
-        drawFrameDragging() {
-            const ctx = this.ctx;
-            const r0 = State.r0;
-            const a = State.spinParam;
-
-            ctx.strokeStyle = '#ffaa44';
-            ctx.lineWidth = 1.5;
-
-            // Draw arrows around the throat
-            for (let l = -3; l <= 3; l += 1.5) {
-                const r = Metric.rFromL(l, r0);
-                const omega = KerrMetric.frameDragOmega(r, Math.PI/2, r0, a);
-
-                for (let phi = 0; phi < Math.PI * 2; phi += Math.PI / 3) {
-                    const x = r * Math.cos(phi);
-                    const y = r * Math.sin(phi);
-
-                    // Arrow direction (tangent to rotation)
-                    const dx = -Math.sin(phi) * omega * 3;
-                    const dy = Math.cos(phi) * omega * 3;
-
-                    const p1 = this.project(x, y, l);
-                    const p2 = this.project(x + dx, y + dy, l);
-
-                    if (p1.visible && p2.visible) {
-                        ctx.beginPath();
-                        ctx.moveTo(p1.x, p1.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        ctx.stroke();
-
-                        // Arrowhead
-                        const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-                        ctx.beginPath();
-                        ctx.moveTo(p2.x, p2.y);
-                        ctx.lineTo(p2.x - 6 * Math.cos(angle - 0.4), p2.y - 6 * Math.sin(angle - 0.4));
-                        ctx.moveTo(p2.x, p2.y);
-                        ctx.lineTo(p2.x - 6 * Math.cos(angle + 0.4), p2.y - 6 * Math.sin(angle + 0.4));
-                        ctx.stroke();
-                    }
-                }
-            }
-        },
-
-        drawErgosphere() {
-            const ctx = this.ctx;
-            const r0 = State.r0;
-            const a = State.spinParam;
-
-            ctx.strokeStyle = '#ff4466';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-
-            // Draw ergosphere boundary
-            ctx.beginPath();
-            for (let theta = 0; theta <= Math.PI * 2; theta += 0.1) {
-                const rErgo = KerrMetric.ergosphereRadius(theta, r0, a);
-                const x = rErgo * Math.cos(theta);
-                const y = rErgo * Math.sin(theta);
-
-                const proj = this.project(x, y, 0);
-                if (theta === 0) ctx.moveTo(proj.x, proj.y);
-                else ctx.lineTo(proj.x, proj.y);
-            }
-            ctx.closePath();
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-    };
-
-    // ============================================================
-    // RENDERER: 2D CROSS-SECTION
-    // ============================================================
-    const Renderer2D = {
-        canvas: null,
-        ctx: null,
-        width: 0,
-        height: 0,
-
-        init(canvas) {
-            this.canvas = canvas;
-            this.ctx = canvas.getContext('2d');
-            this.resize();
-        },
-
-        resize() {
-            const rect = this.canvas.parentElement.getBoundingClientRect();
-            this.width = rect.width;
-            this.height = rect.height;
-            this.canvas.width = this.width * window.devicePixelRatio;
-            this.canvas.height = this.height * window.devicePixelRatio;
-            this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        },
-
-        lToX(l) {
-            return this.width / 2 + l * (this.width / 25);
-        },
-
-        rToY(r) {
-            return this.height - 30 - r * (this.height / 6);
-        },
-
-        render() {
-            const ctx = this.ctx;
-            ctx.clearRect(0, 0, this.width, this.height);
-
-            // Background
-            ctx.fillStyle = '#0a0a12';
-            ctx.fillRect(0, 0, this.width, this.height);
-
-            const r0 = State.r0;
-
-            // Draw energy density (negative = exotic matter)
-            ctx.fillStyle = 'rgba(255, 50, 50, 0.2)';
-            ctx.beginPath();
-            for (let l = -10; l <= 10; l += 0.2) {
-                const r = Metric.rFromL(l, r0);
-                const rho = Math.abs(Metric.energyDensity(r, r0)) * 5000;
-                const x = this.lToX(l);
-                const y = this.height - 30 - Math.min(rho, this.height / 3);
-
-                if (l === -10) ctx.moveTo(x, this.height - 30);
-                ctx.lineTo(x, y);
-            }
-            ctx.lineTo(this.lToX(10), this.height - 30);
-            ctx.closePath();
-            ctx.fill();
-
-            // Draw wormhole profile
-            ctx.strokeStyle = '#4facfe';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            for (let l = -10; l <= 10; l += 0.1) {
-                const r = Metric.rFromL(l, r0);
-                const x = this.lToX(l);
-                const y = this.rToY(r);
-
-                if (l === -10) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
-            // Mirror for embedding diagram effect
-            ctx.strokeStyle = '#4facfe55';
-            ctx.beginPath();
-            for (let l = -10; l <= 10; l += 0.1) {
-                const r = Metric.rFromL(l, r0);
-                const x = this.lToX(l);
-                const y = 2 * (this.height - 30) - this.rToY(r);
-
-                if (l === -10) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
-            // Throat marker
-            ctx.strokeStyle = '#ff4466';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(this.width / 2, 0);
-            ctx.lineTo(this.width / 2, this.height);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Draw effective potential if m > 0
-            if (State.angularMomentum > 0) {
-                ctx.strokeStyle = '#aa44ff';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                for (let l = -10; l <= 10; l += 0.1) {
-                    const V = Metric.effectivePotential(l, r0, State.angularMomentum);
-                    const x = this.lToX(l);
-                    const y = this.height / 2 - V * 30;
-
-                    if (l === -10) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-
-                // Label
-                ctx.fillStyle = '#aa44ff';
-                ctx.font = '12px monospace';
-                ctx.fillText(`V_eff (m=${State.angularMomentum})`, 10, 20);
-            }
-
-            // Labels
-            ctx.fillStyle = '#6a6a8a';
-            ctx.font = '11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('Universe A', this.width * 0.75, 20);
-            ctx.fillText('Universe B', this.width * 0.25, 20);
-            ctx.fillText('l (proper distance)', this.width / 2, this.height - 5);
-
-            // Throat radius label
-            ctx.fillStyle = '#4facfe';
-            ctx.fillText(`r₀ = ${r0.toFixed(2)}`, this.width / 2, this.rToY(r0) - 10);
-        }
-    };
-
-    // ============================================================
-    // RENDERER: TIME DILATION
-    // ============================================================
-    const RendererTime = {
-        canvas: null,
-        ctx: null,
-        width: 0,
-        height: 0,
-
-        init(canvas) {
-            this.canvas = canvas;
-            this.ctx = canvas.getContext('2d');
-            this.resize();
-        },
-
-        resize() {
-            const rect = this.canvas.parentElement.getBoundingClientRect();
-            this.width = rect.width;
-            this.height = rect.height;
-            this.canvas.width = this.width * window.devicePixelRatio;
-            this.canvas.height = this.height * window.devicePixelRatio;
-            this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        },
-
-        drawClock(x, y, radius, time, label, color, reverse = false) {
-            const ctx = this.ctx;
-
-            // Clock face
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.stroke();
-
-            // Tick marks
-            ctx.lineWidth = 1;
-            for (let i = 0; i < 12; i++) {
-                const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-                const inner = radius - 5;
-                const outer = radius;
-                ctx.beginPath();
-                ctx.moveTo(x + inner * Math.cos(angle), y + inner * Math.sin(angle));
-                ctx.lineTo(x + outer * Math.cos(angle), y + outer * Math.sin(angle));
-                ctx.stroke();
-            }
-
-            // Hour hand
-            const dir = reverse ? -1 : 1;
-            const hourAngle = dir * (time / 12) * Math.PI * 2 - Math.PI / 2;
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + radius * 0.5 * Math.cos(hourAngle), y + radius * 0.5 * Math.sin(hourAngle));
-            ctx.stroke();
-
-            // Minute hand
-            const minAngle = dir * (time % 1) * Math.PI * 2 - Math.PI / 2;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + radius * 0.7 * Math.cos(minAngle), y + radius * 0.7 * Math.sin(minAngle));
-            ctx.stroke();
-
-            // Center dot
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, 4, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Label
-            ctx.font = '12px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(label, x, y + radius + 18);
-        },
-
-        render() {
-            const ctx = this.ctx;
-            ctx.clearRect(0, 0, this.width, this.height);
-
-            // Background
-            ctx.fillStyle = '#0a0a12';
-            ctx.fillRect(0, 0, this.width, this.height);
-
-            const r0 = State.r0;
-            const phi0 = State.redshiftPhi;
-
-            // CTC mode
-            const inCTC = State.showCTC && State.spinParam > 0.7;
-
-            // Draw two clocks
-            const clockY = this.height * 0.35;
-            const clockRadius = Math.min(this.width / 5, 50);
-
-            // Coordinate time clock (far from wormhole)
-            this.drawClock(
-                this.width * 0.25, clockY, clockRadius,
-                State.coordinateTime,
-                'Far Observer',
-                '#4facfe'
-            );
-
-            // Proper time clock (near throat) - runs backwards in CTC
-            const dilationFactor = Metric.timeDilationFactor(r0 * 1.1, r0, phi0);
-            this.drawClock(
-                this.width * 0.75, clockY, clockRadius,
-                State.properTime,
-                inCTC ? 'CTC Region' : 'Near Throat',
-                inCTC ? '#ff4466' : '#ff8844',
-                inCTC // reverse if in CTC
-            );
-
-            // Time dilation info
-            ctx.fillStyle = '#e0e0e0';
-            ctx.font = '14px monospace';
-            ctx.textAlign = 'center';
-
-            if (inCTC) {
-                ctx.fillStyle = '#ff4466';
-                ctx.fillText('⚠ TIME RUNNING BACKWARDS', this.width / 2, this.height * 0.6);
-                ctx.font = '11px sans-serif';
-                ctx.fillStyle = '#aaaacc';
-                ctx.fillText('Closed Timelike Curve detected', this.width / 2, this.height * 0.65);
-                ctx.fillText('Causality violation possible!', this.width / 2, this.height * 0.7);
-            } else {
-                ctx.fillText(`dτ/dt = ${dilationFactor.toFixed(3)}`, this.width / 2, this.height * 0.6);
-
-                if (phi0 > 0) {
-                    const ratio = 1 / dilationFactor;
-                    ctx.font = '11px sans-serif';
-                    ctx.fillStyle = '#aaaacc';
-                    ctx.fillText(`1 hour near throat = ${ratio.toFixed(1)} hours far away`, this.width / 2, this.height * 0.68);
-                }
-            }
-
-            // Draw time dilation graph
-            this.drawDilationGraph();
-        },
-
-        drawDilationGraph() {
-            const ctx = this.ctx;
-            const r0 = State.r0;
-            const phi0 = State.redshiftPhi;
-
-            const graphY = this.height * 0.78;
-            const graphH = this.height * 0.18;
-            const graphW = this.width * 0.8;
-            const graphX = this.width * 0.1;
-
-            // Axes
-            ctx.strokeStyle = '#3a3a5a';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(graphX, graphY);
-            ctx.lineTo(graphX + graphW, graphY);
-            ctx.moveTo(graphX + graphW / 2, graphY);
-            ctx.lineTo(graphX + graphW / 2, graphY - graphH);
-            ctx.stroke();
-
-            // Graph dilation factor vs position
-            ctx.strokeStyle = '#ffaa44';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (let i = 0; i <= 100; i++) {
-                const l = -10 + i * 0.2;
-                const r = Metric.rFromL(l, r0);
-                const factor = Metric.timeDilationFactor(r, r0, phi0);
-                const x = graphX + (l + 10) / 20 * graphW;
-                const y = graphY - factor * graphH * 0.8;
-
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
-            // Labels
-            ctx.fillStyle = '#6a6a8a';
-            ctx.font = '10px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('l', graphX + graphW / 2, graphY + 12);
-            ctx.fillText('dτ/dt', graphX - 5, graphY - graphH / 2);
-        }
-    };
-
-    // ============================================================
-    // RENDERER: WAVE / ER=EPR
-    // ============================================================
-    const RendererWave = {
-        canvas: null,
-        ctx: null,
-        width: 0,
-        height: 0,
-
-        init(canvas) {
-            this.canvas = canvas;
-            this.ctx = canvas.getContext('2d');
-            this.resize();
-        },
-
-        resize() {
-            const rect = this.canvas.parentElement.getBoundingClientRect();
-            this.width = rect.width;
-            this.height = rect.height;
-            this.canvas.width = this.width * window.devicePixelRatio;
-            this.canvas.height = this.height * window.devicePixelRatio;
-            this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-        },
-
-        render() {
-            if (State.mode === 'erepr') {
-                this.renderEREPR();
-            } else {
-                this.renderWave();
-            }
-        },
-
-        renderWave() {
-            const ctx = this.ctx;
-            ctx.clearRect(0, 0, this.width, this.height);
-
-            // Background
-            ctx.fillStyle = '#0a0a12';
-            ctx.fillRect(0, 0, this.width, this.height);
-
-            if (!State.waveL) return;
-
-            const r0 = State.r0;
-            const m = State.angularMomentum;
-
-            // Draw effective potential
-            if (m > 0) {
-                ctx.fillStyle = 'rgba(170, 68, 255, 0.15)';
-                ctx.beginPath();
-                ctx.moveTo(0, this.height);
-
-                for (let i = 0; i < Wave.nPoints; i++) {
-                    const l = State.waveL[i];
-                    const V = Metric.effectivePotential(l, r0, m);
-                    const x = (i / Wave.nPoints) * this.width;
-                    const y = this.height - V * this.height * 0.8;
-                    ctx.lineTo(x, y);
-                }
-                ctx.lineTo(this.width, this.height);
-                ctx.closePath();
-                ctx.fill();
-
-                // Potential line
-                ctx.strokeStyle = '#aa44ff';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                for (let i = 0; i < Wave.nPoints; i++) {
-                    const l = State.waveL[i];
-                    const V = Metric.effectivePotential(l, r0, m);
-                    const x = (i / Wave.nPoints) * this.width;
-                    const y = this.height - V * this.height * 0.8;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-            }
-
-            // Draw wave amplitude
-            ctx.strokeStyle = '#44ff88';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-
-            let maxAmp = 0;
-            for (let i = 0; i < Wave.nPoints; i++) {
-                const amp = State.wavePhi[i*2]**2 + State.wavePhi[i*2+1]**2;
-                maxAmp = Math.max(maxAmp, amp);
-            }
-            maxAmp = Math.max(maxAmp, 0.01);
-
-            for (let i = 0; i < Wave.nPoints; i++) {
-                const amp = State.wavePhi[i*2]**2 + State.wavePhi[i*2+1]**2;
-                const x = (i / Wave.nPoints) * this.width;
-                const y = this.height * 0.7 - (amp / maxAmp) * this.height * 0.5;
-
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-
-            // Throat marker
-            ctx.strokeStyle = '#ff4466';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(this.width / 2, 0);
-            ctx.lineTo(this.width / 2, this.height);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Stats
-            const trans = Wave.getTransmission();
-            document.getElementById('stats-wave').innerHTML =
-                `T=${(trans.transmission * 100).toFixed(0)}% R=${(trans.reflection * 100).toFixed(0)}% m=${m}`;
-
-            // Labels
-            ctx.fillStyle = '#6a6a8a';
-            ctx.font = '11px sans-serif';
-            ctx.fillText('|ψ|²', 10, 20);
-            ctx.textAlign = 'center';
-            ctx.fillText('Throat', this.width / 2, this.height - 5);
-        },
-
-        renderEREPR() {
-            const ctx = this.ctx;
-            ctx.clearRect(0, 0, this.width, this.height);
-
-            // Two universe backgrounds
-            ctx.fillStyle = '#0a0a1a';
-            ctx.fillRect(0, 0, this.width / 2 - 5, this.height);
-            ctx.fillStyle = '#1a0a0a';
-            ctx.fillRect(this.width / 2 + 5, 0, this.width / 2 - 5, this.height);
-
-            // Universe labels
-            ctx.fillStyle = '#4facfe';
-            ctx.font = 'bold 14px sans-serif';
-            ctx.fillText('Universe A', 20, 25);
-            ctx.fillStyle = '#ff8844';
-            ctx.fillText('Universe B', this.width - 90, 25);
-
-            // Wormhole bridge (opacity = entanglement)
-            const bridgeOpacity = State.entanglement / 100;
-            if (bridgeOpacity > 0) {
-                const grad = ctx.createLinearGradient(this.width * 0.3, 0, this.width * 0.7, 0);
-                grad.addColorStop(0, `rgba(79, 172, 254, ${bridgeOpacity * 0.5})`);
-                grad.addColorStop(0.5, `rgba(100, 255, 150, ${bridgeOpacity * 0.7})`);
-                grad.addColorStop(1, `rgba(255, 136, 68, ${bridgeOpacity * 0.5})`);
-
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.ellipse(this.width / 2, this.height / 2,
-                           20 + bridgeOpacity * 60, this.height * 0.3,
-                           0, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Bridge label
-                ctx.fillStyle = '#44ff88';
-                ctx.font = '11px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('ER Bridge', this.width / 2, this.height / 2 - this.height * 0.25);
-            }
-
-            // Draw qubits as spheres
-            this.drawQubit(this.width * 0.2, this.height / 2, 35, State.qubitA, '#4facfe', 'A');
-            this.drawQubit(this.width * 0.8, this.height / 2, 35, State.qubitB, '#ff8844', 'B');
-
-            // Entanglement info
-            ctx.fillStyle = '#e0e0e0';
-            ctx.font = '12px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`Entanglement: ${State.entanglement}%`, this.width / 2, this.height - 40);
-
-            // Non-traversable warning
-            if (bridgeOpacity > 0.3) {
-                ctx.fillStyle = '#ffaa00';
-                ctx.font = '10px sans-serif';
-                ctx.fillText('Bridge is NON-TRAVERSABLE', this.width / 2, this.height - 20);
-                ctx.fillText('(No faster-than-light signaling)', this.width / 2, this.height - 8);
-            }
-        },
-
-        drawQubit(x, y, radius, qubit, color, label) {
-            const ctx = this.ctx;
-
-            // Outer sphere
-            const grad = ctx.createRadialGradient(x - radius * 0.3, y - radius * 0.3, 0,
-                                                   x, y, radius);
-            grad.addColorStop(0, color);
-            grad.addColorStop(1, '#0a0a12');
-
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // State indicator
-            if (qubit.measured) {
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 20px monospace';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(qubit.value === 0 ? '|0⟩' : '|1⟩', x, y);
-            } else {
-                // Superposition visualization
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.font = '14px monospace';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('|ψ⟩', x, y);
-            }
-
-            // Label
-            ctx.fillStyle = color;
-            ctx.font = '12px sans-serif';
-            ctx.textBaseline = 'alphabetic';
-            ctx.fillText(`Qubit ${label}`, x, y + radius + 20);
-        }
-    };
-
-    // ============================================================
-    // EVENT HANDLING
-    // ============================================================
-    function setupEventHandlers() {
-        // Sliders
-        const sliders = {
-            'slider-r0': { state: 'r0', display: 'val-r0', decimals: 1 },
-            'slider-phi': { state: 'redshiftPhi', display: 'val-phi', decimals: 1 },
-            'slider-spin': { state: 'spinParam', display: 'val-spin', decimals: 2 },
-            'slider-m': { state: 'angularMomentum', display: 'val-m', decimals: 0 },
-            'slider-pos': { state: 'wavePosition', display: 'val-pos', decimals: 1 },
-            'slider-vel': { state: 'waveVelocity', display: 'val-vel', decimals: 1 },
-            'slider-exotic': { state: 'exoticStrength', display: 'val-exotic', decimals: 1 },
-            'slider-collapse': { state: 'collapseRate', display: 'val-collapse', decimals: 1 },
-            'slider-entangle': { state: 'entanglement', display: 'val-entangle', decimals: 0, suffix: '%' }
-        };
-
-        for (const [id, config] of Object.entries(sliders)) {
-            const slider = document.getElementById(id);
-            if (!slider) continue;
-
-            slider.addEventListener('input', () => {
-                const val = parseFloat(slider.value);
-                State[config.state] = val;
-                const display = document.getElementById(config.display);
-                if (display) {
-                    display.textContent = val.toFixed(config.decimals) + (config.suffix || '');
-                }
-
-                // Update CTC warning
-                updateCTCWarning();
+    <div class="hdr-actions">
+      <button id="hdr-dough" class="hot" type="button">Send Doughnut 🍩</button>
+      <button id="hdr-traverse" type="button">Traverse</button>
+      <button id="hdr-tour" type="button">Tour</button>
+    </div>
+  </header>
+
+  <main>
+    <aside id="sidebar"><!-- WormholeUI builds all controls in here --></aside>
+
+    <section id="hero-wrap">
+      <canvas id="hero"></canvas>
+      <!-- WormholeUI mounts HUD / flight label / collapse banner / fallback here -->
+      <div id="hud"></div>
+      <div id="banner"></div>
+    </section>
+
+    <aside id="rail">
+      <div class="rail-panel">
+        <div class="rail-title">Cross-section · isometric embedding · ray inspector</div>
+        <canvas id="cs-canvas"></canvas>
+      </div>
+      <div class="rail-panel">
+        <div class="rail-title">m-mode wave · corrected V_eff · T / R</div>
+        <canvas id="wave-canvas"></canvas>
+      </div>
+      <div class="rail-panel">
+        <div class="rail-title">Exotic-matter ledger · Jupiter counter</div>
+        <canvas id="ledger-canvas"></canvas>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <span class="eq">ds² = −dt² + dl² + (l²+r0²)dΩ²</span>
+    <span class="eq">r(l) = <b>√(l²+r0²)</b></span>
+    <span class="eq">ρ = <span class="neg">−r0²/(8π r⁴) &lt; 0</span> (exotic)</span>
+    <span class="eq">b_c = r0</span>
+    <span class="eq">z(l) = r0·asinh(l/r0)</span>
+    <span class="brandtag">coherence-lab · spectacle that visualizes real solutions, never fakes them</span>
+  </footer>
+</div>
+
+<button id="sidebar-toggle" type="button">Controls</button>
+<button id="rail-toggle" type="button">Panels</button>
+
+<div id="boot-error">
+  <div class="card">
+    <h2>Playground failed to boot</h2>
+    <p>A core module did not load. If you opened this from disk, make sure the
+       <code>js/</code> folder sits next to <code>playground.html</code>.</p>
+    <p id="boot-error-detail"></p>
+  </div>
+</div>
+
+<!-- ===== modules: classic <script src>, dependency order, one global each ===== -->
+<script src="js/wormhole-physics.js"></script>
+<script src="js/wormhole-gl.js"></script>
+<script src="js/wormhole-panels.js"></script>
+<script src="js/wormhole-ui.js"></script>
+
+<script>
+/* ============================================================================
+ * INTEGRATOR  — wires the four globals into one running product.
+ * Pure glue: it owns no physics. It reads ui.state every frame (single source
+ * of truth), drives the wave solver on launch actions, bridges click-a-pixel
+ * inspection (WormholeGL.pixelToRay → WormholePhysics.traceRay), and renders.
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  function bootError(msg) {
+    var box = document.getElementById('boot-error');
+    var det = document.getElementById('boot-error-detail');
+    if (det) det.textContent = msg || '';
+    if (box) box.style.display = 'flex';
+    console.error('[integrator] boot error: ' + msg);
+  }
+
+  function boot() {
+    // ---- verify all four globals are present ----
+    var missing = [];
+    if (!window.WormholePhysics) missing.push('WormholePhysics');
+    if (!window.WormholeGL)      missing.push('WormholeGL');
+    if (!window.WormholePanels)  missing.push('WormholePanels');
+    if (!window.WormholeUI)      missing.push('WormholeUI');
+    if (missing.length) {
+      bootError('Missing module global(s): ' + missing.join(', ') +
+        '. Check that js/ is next to playground.html and the <script> tags resolved.');
+      return;
+    }
+
+    var Physics = window.WormholePhysics;
+    var GL = window.WormholeGL;
+    var Panels = window.WormholePanels;
+    var UI = window.WormholeUI;
+
+    // ---- DOM handles ----
+    var heroCanvas = document.getElementById('hero');
+    var sidebarEl  = document.getElementById('sidebar');
+    var hudEl      = document.getElementById('hud');
+    var bannerEl   = document.getElementById('banner');
+    var csCanvas   = document.getElementById('cs-canvas');
+    var waveCanvas = document.getElementById('wave-canvas');
+    var ledgerCanvas = document.getElementById('ledger-canvas');
+
+    // ========================================================================
+    // 1. STARTUP SELF-TEST  (log each assertion; surface PASS/FAIL chip)
+    // ========================================================================
+    var selfTestReport;
+    try {
+      selfTestReport = Physics.selfTest();
+    } catch (e) {
+      selfTestReport = { passed: false, results: [{ name: 'selfTest threw', expected: 'no throw', actual: String(e), pass: false }] };
+    }
+    console.log('%c━━━ Wormhole physics self-test ━━━', 'color:#4facfe;font-weight:bold');
+    (selfTestReport.results || []).forEach(function (r) {
+      var tag = r.pass ? '%cPASS' : '%cFAIL';
+      var style = r.pass ? 'color:#7af0a8' : 'color:#ff8a96;font-weight:bold';
+      console.log(tag + '%c  ' + r.name + '  →  expected ' + r.expected + ', got ' + r.actual,
+        style, 'color:inherit');
+    });
+    console.log('%c━━━ self-test ' + (selfTestReport.passed ? 'PASSED' : 'FAILED') + ' (' +
+      (selfTestReport.results || []).filter(function (r) { return r.pass; }).length + '/' +
+      (selfTestReport.results || []).length + ') ━━━',
+      selfTestReport.passed ? 'color:#7af0a8;font-weight:bold' : 'color:#ff8a96;font-weight:bold');
+
+    // ========================================================================
+    // 2. WAVE SOLVER  (single source — GL shell + panel plot both read it)
+    // ========================================================================
+    var solver = Physics.makeWaveSolver({ n: 400, lMin: -12, lMax: 12 });
+    var waveRunning = false;   // true once a packet is launched
+    var WAVE_DT = 0.02;
+
+    // ========================================================================
+    // 3. WEBGL RAYTRACER
+    // ========================================================================
+    var glStatus = GL.init(heroCanvas);
+    var glOk = !!(glStatus && glStatus.ok);
+
+    // ========================================================================
+    // 4. CANVAS-2D PANELS  (inspector rail; also the fallback experience)
+    // ========================================================================
+    var panels = Panels.create({
+      crossSectionCanvas: csCanvas,
+      waveCanvas: waveCanvas,
+      ledgerCanvas: ledgerCanvas
+    });
+
+    // ========================================================================
+    // 5. UI  (controls + HUD + pointer + traverse + doughnut + tour + audio)
+    // ========================================================================
+    var ui = UI.init({
+      sidebarEl: sidebarEl,
+      hudEl: hudEl,
+      bannerEl: bannerEl,
+      heroCanvas: heroCanvas
+    });
+    ui.setSelfTest(selfTestReport);
+
+    if (!glOk) {
+      // styled banner + panels-only experience
+      ui.showFallback(glStatus ? glStatus.reason : 'no-webgl2');
+      console.warn('[integrator] WebGL2 raytracer offline (' +
+        (glStatus ? glStatus.reason : 'unknown') + ') — running Canvas-2D panel fallback.');
+    }
+
+    // wire the header action buttons → the UI's own handlers
+    wireHeaderButton('hdr-dough', ui._sendDoughnut);
+    wireHeaderButton('hdr-traverse', ui._startTraverse);
+    wireHeaderButton('hdr-tour', ui._tourStart);
+
+    function wireHeaderButton(id, fn) {
+      var b = document.getElementById(id);
+      if (b && typeof fn === 'function') b.addEventListener('click', fn);
+    }
+
+    // mobile drawer toggles
+    (function () {
+      var sb = document.getElementById('sidebar');
+      var rl = document.getElementById('rail');
+      var sbt = document.getElementById('sidebar-toggle');
+      var rlt = document.getElementById('rail-toggle');
+      if (sbt) sbt.addEventListener('click', function () { sb.classList.toggle('open'); });
+      if (rlt) rlt.addEventListener('click', function () { rl.classList.toggle('open'); });
+    })();
+
+    // ========================================================================
+    // 6. RESIZE  (hero GL + the three panel canvases)
+    // ========================================================================
+    function doResize() {
+      var rect = heroCanvas.parentElement.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      if (glOk) GL.resize(Math.max(1, rect.width), Math.max(1, rect.height), dpr);
+      panels.resize();
+    }
+    window.addEventListener('resize', doResize);
+    doResize();
+
+    // ========================================================================
+    // 7. STATE TRACKING for solver setM + inspector overlay
+    // ========================================================================
+    var lastM = ui.state.m;
+    solver.setM(lastM);
+
+    var overlay = null;   // last inspector traceRay result, drawn on the cross-section
+
+    // ========================================================================
+    // 8. ACTION ROUTER  — drain ui.pollActions() each frame and do the
+    //    integrator-owned side effects (launchWave / reseed / inspect).
+    //    traverse / sendDoughnut / resetThroat are applied inside the UI;
+    //    we no-op them here (they still arrive in the queue per the contract).
+    // ========================================================================
+    function handleActions() {
+      var queue = ui.pollActions();
+      for (var i = 0; i < queue.length; i++) {
+        var a = queue[i];
+        switch (a.type) {
+          case 'launchWave':
+            solver.setM(ui.state.m);
+            lastM = ui.state.m;
+            solver.launch({
+              l0: ui.state.waveLaunch.l0,
+              k: ui.state.waveLaunch.k,
+              width: ui.state.waveLaunch.width,
+              m: ui.state.m
             });
-        }
-
-        // Checkboxes
-        document.getElementById('chk-framedrag').addEventListener('change', (e) => {
-            State.showFrameDrag = e.target.checked;
-        });
-        document.getElementById('chk-ergo').addEventListener('change', (e) => {
-            State.showErgosphere = e.target.checked;
-        });
-        document.getElementById('chk-ctc').addEventListener('change', (e) => {
-            State.showCTC = e.target.checked;
-            updateCTCWarning();
-        });
-        document.getElementById('chk-dynamic').addEventListener('change', (e) => {
-            State.dynamicThroat = e.target.checked;
-        });
-
-        // Launch wave button
-        document.getElementById('btn-launch').addEventListener('click', () => {
-            Wave.setInitialConditions(State.wavePosition, 1.5, State.waveVelocity);
-            State.waveRunning = true;
-        });
-
-        // Mode buttons
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                State.mode = btn.dataset.mode;
-
-                // Show/hide ER=EPR controls
-                document.getElementById('erepr-controls').style.display =
-                    State.mode === 'erepr' ? 'block' : 'none';
+            waveRunning = true;
+            break;
+          case 'reseed':
+            GL.reseedSky(Math.random() * 1000, Math.random() * 1000 + 500);
+            break;
+          case 'inspect': {
+            // click-a-pixel → re-integrate that exact ray on the CPU.
+            // WormholeGL.pixelToRay produces ICs for the SAME camera basis the
+            // shader used; WormholePhysics.traceRay reproduces the pixel.
+            var ray = GL.pixelToRay(a.px, a.py, ui.state);
+            var result = Physics.traceRay(ui.state.camL, ray.theta, ui.state.r0, {
+              steps: 2000, recordPath: true
             });
-        });
-
-        // Preset buttons
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                applyPreset(btn.dataset.preset);
-            });
-        });
-
-        // ER=EPR buttons
-        document.getElementById('btn-measure-a').addEventListener('click', () => {
-            EREPR.measureQubit('A');
-        });
-        document.getElementById('btn-measure-b').addEventListener('click', () => {
-            EREPR.measureQubit('B');
-        });
-
-        // 3D canvas mouse interaction
-        const canvas3d = document.getElementById('canvas-3d');
-        let isDragging = false;
-        let lastX, lastY;
-
-        canvas3d.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            lastX = e.clientX;
-            lastY = e.clientY;
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const dx = e.clientX - lastX;
-            const dy = e.clientY - lastY;
-            State.camera.theta += dx * 0.01;
-            State.camera.phi = Math.max(-1.2, Math.min(1.2, State.camera.phi + dy * 0.01));
-            lastX = e.clientX;
-            lastY = e.clientY;
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-        });
-
-        canvas3d.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            State.camera.zoom *= e.deltaY > 0 ? 0.95 : 1.05;
-            State.camera.zoom = Math.max(0.3, Math.min(3, State.camera.zoom));
-        });
-
-        // Window resize
-        window.addEventListener('resize', () => {
-            Renderer3D.resize();
-            Renderer2D.resize();
-            RendererTime.resize();
-            RendererWave.resize();
-        });
-    }
-
-    function updateCTCWarning() {
-        const warning = document.getElementById('ctc-warning');
-        if (State.showCTC && State.spinParam > 0.7) {
-            warning.classList.remove('hidden');
-        } else {
-            warning.classList.add('hidden');
+            ui.setInspector(result);
+            overlay = result;
+            break;
+          }
+          // traverse / sendDoughnut / resetThroat: UI already applied them.
+          default: break;
         }
+      }
     }
 
-    function applyPreset(name) {
-        const presets = {
-            ellis: {
-                r0: 1.0, redshiftPhi: 0, spinParam: 0,
-                angularMomentum: 0, showCTC: false, mode: 'explore'
-            },
-            rotating: {
-                r0: 1.0, redshiftPhi: 0.3, spinParam: 0.5,
-                showCTC: false, mode: 'explore'
-            },
-            ctc: {
-                r0: 1.0, redshiftPhi: 0.5, spinParam: 0.85,
-                showCTC: true, mode: 'explore'
-            },
-            erepr: {
-                r0: 1.0, spinParam: 0, entanglement: 80,
-                mode: 'erepr'
-            }
-        };
+    // ========================================================================
+    // 9. MAIN rAF LOOP
+    // ========================================================================
+    var tPrev = performance.now();
 
-        const preset = presets[name];
-        if (!preset) return;
+    function frame(tNow) {
+      var dt = (tNow - tPrev) / 1000;
+      if (!isFinite(dt) || dt < 0) dt = 0.016;
+      if (dt > 0.1) dt = 0.1;          // clamp long gaps (tab backgrounded)
+      tPrev = tNow;
 
-        Object.assign(State, preset);
+      // --- drain UI actions (launchWave / reseed / inspect; rest already applied) ---
+      handleActions();
 
-        // Update UI
-        document.getElementById('slider-r0').value = State.r0;
-        document.getElementById('val-r0').textContent = State.r0.toFixed(1);
-        document.getElementById('slider-phi').value = State.redshiftPhi;
-        document.getElementById('val-phi').textContent = State.redshiftPhi.toFixed(1);
-        document.getElementById('slider-spin').value = State.spinParam;
-        document.getElementById('val-spin').textContent = State.spinParam.toFixed(2);
-        document.getElementById('slider-m').value = State.angularMomentum;
-        document.getElementById('val-m').textContent = State.angularMomentum;
-        document.getElementById('chk-ctc').checked = State.showCTC;
-        document.getElementById('slider-entangle').value = State.entanglement;
-        document.getElementById('val-entangle').textContent = State.entanglement + '%';
+      // --- keep the solver's m in sync with the slider even without a relaunch ---
+      if (ui.state.m !== lastM) {
+        solver.setM(ui.state.m);
+        lastM = ui.state.m;
+      }
 
-        // Update mode buttons
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.mode === State.mode);
-        });
+      // --- advance the wave field while a packet is live ---
+      if (waveRunning) {
+        solver.step(WAVE_DT, ui.state.r0, 5);
+        if (glOk) GL.setWaveField(solver.amplitude, -12, 12);
+      }
+      var trans = solver.getTransmission();
 
-        // Show/hide ER=EPR controls
-        document.getElementById('erepr-controls').style.display =
-            State.mode === 'erepr' ? 'block' : 'none';
+      // --- SI budget for the current throat at the selected physical scale ---
+      var budget = Physics.budget(ui.state.r0 * ui.state.scale_m);
 
-        updateCTCWarning();
-        EREPR.reset();
+      // --- advance UI (traverse easing, doughnut crossing, stability toy, HUD) ---
+      ui.update(dt, {
+        stats: glOk ? GL.getStats() : null,
+        trans: trans,
+        budget: budget,
+        selfTest: selfTestReport
+      });
+
+      // --- render the hero ---
+      if (glOk) GL.render(ui.state);
+
+      // --- render the inspector rail panels ---
+      panels.renderCrossSection(ui.state, overlay);
+      panels.renderWave(
+        solver.amplitude, solver.lGrid,
+        solver.potential(ui.state.r0, ui.state.m),
+        ui.state.r0, ui.state.m, trans
+      );
+      panels.renderLedger(budget, ui.state.r0 * ui.state.scale_m);
+
+      requestAnimationFrame(frame);
     }
 
-    // ============================================================
-    // ANIMATION LOOP
-    // ============================================================
-    function animate(currentTime) {
-        const dt = 0.016; // ~60fps
+    requestAnimationFrame(frame);
 
-        // Update time
-        State.time += dt;
-        State.coordinateTime += dt * 0.1;
+    // tiny debug handle (does not add a new namespace beyond this one)
+    window.__wormhole = {
+      get state() { return ui.state; },
+      solver: solver, selfTest: selfTestReport,
+      relaunch: function () {
+        solver.launch({ l0: ui.state.waveLaunch.l0, k: ui.state.waveLaunch.k, m: ui.state.m });
+        waveRunning = true;
+      }
+    };
 
-        // Proper time with dilation
-        const dilationFactor = Metric.timeDilationFactor(State.r0 * 1.1, State.r0, State.redshiftPhi);
-        const ctcFactor = (State.showCTC && State.spinParam > 0.7) ? -1 : 1;
-        State.properTime += dt * 0.1 * dilationFactor * ctcFactor;
+    console.log('%c[integrator] Wormhole Playground booted. WebGL2: ' +
+      (glOk ? 'ON' : 'FALLBACK') + '. Click a pixel to trace a ray; Send Doughnut 🍩 to cross the throat.',
+      'color:#4facfe');
+  }
 
-        // Update physics
-        if (State.waveRunning) {
-            for (let i = 0; i < 5; i++) {
-                Wave.evolveStep(0.02);
-            }
-        }
-
-        Stability.evolveStep(dt);
-
-        // Auto-rotate in explore mode
-        if (State.mode === 'explore') {
-            State.camera.theta += 0.002;
-        }
-
-        // Render all panels
-        Renderer3D.render();
-        Renderer2D.render();
-        RendererTime.render();
-        RendererWave.render();
-
-        requestAnimationFrame(animate);
-    }
-
-    // ============================================================
-    // INITIALIZATION
-    // ============================================================
-    function init() {
-        // Initialize renderers
-        Renderer3D.init(document.getElementById('canvas-3d'));
-        Renderer2D.init(document.getElementById('canvas-2d'));
-        RendererTime.init(document.getElementById('canvas-time'));
-        RendererWave.init(document.getElementById('canvas-wave'));
-
-        // Initialize wave
-        Wave.init();
-        Wave.setInitialConditions(8, 1.5, -0.8);
-
-        // Setup events
-        setupEventHandlers();
-
-        // Start animation
-        requestAnimationFrame(animate);
-
-        console.log('Wormhole Physics Playground initialized');
-    }
-
-    // Start when DOM is ready
-    document.addEventListener('DOMContentLoaded', init);
-    </script>
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
 </body>
 </html>
