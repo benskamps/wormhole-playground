@@ -204,11 +204,16 @@
 
     // ------------------------------------------------ internal bookkeeping --
     var TRAVERSE_DURATION = 12.0;   // seconds, +8r0 -> -8r0
-    // COMING SOON: the doughnut crossing renders a full-screen pixelated blob near
-    // the throat (the tidal-deform torus SDF blows up). Gated off in prod until the
-    // sdTorus / tidal-strain shader path is fixed. Flip to false to re-enable every
-    // doughnut trigger at once (panel button + header button + exposed API).
-    var DOUGHNUT_COMING_SOON = true;
+    // The doughnut crossing used to render a full-screen pixelated blob near the
+    // throat: the tidal-deform torus SDF (js/wormhole-gl.js sdTorus) measured
+    // distance in DEFORMED space, so the sphere-tracer over-stepped and tunnelled
+    // through the thin tube, then doughNormal central-differences exploded. Fixed
+    // 2026-06-19 with (a) a Lipschitz correction in sdTorus and (b) a visual-only
+    // clamp on the strain uniforms (radial<=2.2, lateral>=0.45) — the survival HUD
+    // still uses the unclamped physics. This flag is the single kill-switch for
+    // every doughnut trigger (panel button + header button + exposed API); set it
+    // back to true to re-gate if a regression appears.
+    var DOUGHNUT_COMING_SOON = false;
     var DOUGHNUT_CROSS_SECONDS = 16.0; // target wall-clock for a full doughnut crossing
                                        // (longer so the throat-passage — where the
                                        //  lensed glazed torus is most visible — lingers
@@ -343,10 +348,17 @@
       min: 0.01, max: 0.5, step: 0.01, value: state.doughnutSpeed, dec: 2,
       set: function (v) { state.doughnutSpeed = v; state.doughnut.vFrac = v; }
     });
-    var bDoughPanel = button(gDough, 'Coming soon 🍩', false, function () {});
-    bDoughPanel.disabled = true;
-    bDoughPanel.title = 'Doughnut traversal is being polished — coming soon';
-    note(gDough, 'The mascot crossing the throat on a real timelike geodesic — gravitationally lensed and tidally deformed, with a survival HUD — is being polished. <strong>Coming soon.</strong> 🍩');
+    var doughLabel = DOUGHNUT_COMING_SOON ? 'Coming soon 🍩' : 'Send the doughnut 🍩';
+    var bDoughPanel = button(gDough, doughLabel, !DOUGHNUT_COMING_SOON, function () {
+      if (!DOUGHNUT_COMING_SOON) sendDoughnut();
+    });
+    bDoughPanel.disabled = DOUGHNUT_COMING_SOON;
+    bDoughPanel.title = DOUGHNUT_COMING_SOON
+      ? 'Doughnut traversal is being polished — coming soon'
+      : 'Send the mascot through the throat on a real timelike geodesic';
+    note(gDough, DOUGHNUT_COMING_SOON
+      ? 'The mascot crossing the throat on a real timelike geodesic — gravitationally lensed and tidally deformed, with a survival HUD — is being polished. <strong>Coming soon.</strong> 🍩'
+      : 'The mascot crosses the throat on a real timelike geodesic — gravitationally lensed and tidally deformed, with a live survival HUD. 🍩');
 
     // -- Stability group --
     var gStab = group('Stability (pedagogical toy)');
@@ -1051,7 +1063,10 @@
       _inspectorEl: inspectorBox,
       _startTraverse: startTraverse,
       _sendDoughnut: sendDoughnut,
-      _tourStart: tourStart
+      _tourStart: tourStart,
+      // true while the doughnut throat-crossing is gated off (lets the host
+      // enable/relabel the header button without duplicating the flag).
+      _doughnutGated: DOUGHNUT_COMING_SOON
     };
 
     // auto-attach pointer to the hero canvas if one was provided

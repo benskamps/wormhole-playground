@@ -345,6 +345,17 @@
     wireHeaderButton('hdr-traverse', ui._startTraverse);
     wireHeaderButton('hdr-tour', ui._tourStart);
 
+    // The doughnut header button ships disabled ("Doughnut · soon"); enable +
+    // relabel it once the UI reports the throat-crossing is no longer gated.
+    (function () {
+      var b = document.getElementById('hdr-dough');
+      if (b && ui._doughnutGated === false) {
+        b.disabled = false;
+        b.textContent = 'Send Doughnut';
+        b.title = 'Send the mascot through the throat';
+      }
+    })();
+
     function wireHeaderButton(id, fn) {
       var b = document.getElementById(id);
       if (b && typeof fn === 'function') b.addEventListener('click', fn);

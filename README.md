@@ -125,6 +125,22 @@ python formation.py          # watch formation fail to change topology
 A collaboration between human scientific curiosity and Claude (Anthropic). Part of the
 [Coherence Lab](https://www.brokenbranch.dev/coherence-lab/) physics playground.
 
+## Deploying to the website
+
+This repo is the **source of truth**. The live copy at
+`brokenbranchdevwebsite/lab/wormhole` is a separate tree that carries prod-only
+edits (injected SEO/OG/JSON-LD in the HTML `<head>`). Sync runtime changes with:
+
+```sh
+scripts/sync-to-prod.sh            # dry run (JS only); --apply to write
+scripts/sync-to-prod.ps1           # PowerShell equivalent
+```
+
+It copies the `js/*.js` payload by default and **refuses to overwrite the HTML +
+README** unless you pass `--force-html`, so prod's SEO head survives. The script
+only touches the local website working tree -- it never commits or pushes; review
+and deploy through the website repo's own workflow.
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
