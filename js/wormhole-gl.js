@@ -232,7 +232,19 @@
     '  p.z /= uDoughRadial;        // radial stretch along the direction of motion',
     '  p.x *= uDoughLateral;       // lateral squeeze perpendicular to motion',
     '  vec2 q = vec2(length(p.xz) - DOUGH_R, p.y);',
-    '  return length(q) - DOUGH_r;',
+    '  float d = length(q) - DOUGH_r;',
+    '  // --- Lipschitz correction (THIS is the old full-screen-blob fix) ---',
+    '  // The anisotropic deform above measures distance in DEFORMED space. For a',
+    '  // safe sphere-trace in REAL space the step must never exceed the true',
+    '  // distance, so divide by the largest stretch of the inverse map. Stretching',
+    '  // z by uDoughRadial and squeezing x by uDoughLateral both make deformed',
+    '  // distance OVER-estimate real distance by up to max(radial, 1/lateral);',
+    '  // without this, the tracer takes giant steps, tunnels through the thin tube,',
+    '  // misses the hit test, and doughNormal central-differences explode into a',
+    '  // pixelated blob. (Uniforms are also clamped JS-side to keep the deform',
+    '  // recognizable; this guard makes the SDF robust even if they were not.)',
+    '  float lip = max(max(uDoughRadial, 1.0 / max(uDoughLateral, 1e-3)), 1.0);',
+    '  return d / lip;',
     '}',
     '// glaze + sprinkles shading; n = surface normal, pl = local sample point',
     'vec3 doughShade(vec3 pl, vec3 n, vec3 rd, vec3 lightDir){',
@@ -475,9 +487,16 @@
     '  // composite emission (volumetric) over background',
     '  vec3 color = bg + emission + ringColor;',
     '',
-    '  // composite doughnut on top (it is local & opaque where hit)',
+    '  // composite doughnut on top (it is local & opaque where hit).',
+    '  // Near-camera fade: when the doughnut passes point-blank through the camera',
+    '  // plane (|uDoughL - uCamL| small) the tube fills the whole near-field and',
+    '  // reads as a flat full-frame pink fill — not the shareable throat view. Fade',
+    '  // it out within ~1 sim unit of the camera so it cleanly approaches from depth',
+    '  // and emerges past the lens instead of flashing at spawn / fly-by.',
     '  if (hitDough) {',
-    '    color = doughCol + emission * 0.3 + ringColor * 0.4;',
+    '    float camGap = abs(uDoughL - uCamL);',
+    '    float nearFade = smoothstep(0.35, 1.25, camGap);   // 0 point-blank -> 1 away',
+    '    color = mix(color, doughCol + emission * 0.3 + ringColor * 0.4, nearFade);',
     '  }',
     '',
     '  // ---- exposure + ACES tonemap + dither ----',
@@ -523,6 +542,11 @@
 
   // doughnut uniform cache
   var dough = { active: false, l: 0, vFrac: 0, radial: 1, lateral: 1 };
+  // Visual clamp bounds for the tidal deform pushed to the torus SDF (see the
+  // strain-clamp note in setUniforms). Keeps a recognizable stretch/squeeze;
+  // the survival HUD uses the unclamped physics numbers.
+  var DOUGH_STRAIN_MAX = 2.2;   // max radial stretch shown
+  var DOUGH_STRAIN_MIN = 0.45;  // min lateral squeeze shown
 
   // wave field cache
   var waveLMin = -12, waveLMax = 12;
@@ -785,11 +809,20 @@
     var dVF = dd ? dd.vFrac : dough.vFrac;
     var dRad = dd && typeof dd.radialStrain === 'number' && dd.radialStrain > 0 ? dd.radialStrain : dough.radial;
     var dLat = dd && typeof dd.lateralStrain === 'number' && dd.lateralStrain > 0 ? dd.lateralStrain : dough.lateral;
+    // VISUAL-ONLY strain clamp. The honest tidal numbers (radial up to ~100x,
+    // lateral down to ~0.01x near a small throat / high vFrac) would shrink the
+    // glazed tube to a sub-pixel sliver and read as noise. Clamp the *render*
+    // deform to a recognizable stretch/squeeze so the doughnut still looks like a
+    // doughnut while it visibly deforms. The HUD survival verdict (tidal()/
+    // doughnutSurvival) uses the UNCLAMPED physics — this changes pixels, not the
+    // ledger. Pairs with the Lipschitz guard in sdTorus.
+    var dRadVis = Math.min(Math.max(dRad || 1.0, 1.0), DOUGH_STRAIN_MAX);
+    var dLatVis = Math.min(Math.max(dLat || 1.0, DOUGH_STRAIN_MIN), 1.0);
     gl.uniform1f(uniforms.uDoughActive, dActive ? 1.0 : 0.0);
     gl.uniform1f(uniforms.uDoughL, dL || 0);
     gl.uniform1f(uniforms.uDoughVFrac, dVF || 0);
-    gl.uniform1f(uniforms.uDoughRadial, dRad || 1.0);
-    gl.uniform1f(uniforms.uDoughLateral, dLat || 1.0);
+    gl.uniform1f(uniforms.uDoughRadial, dRadVis);
+    gl.uniform1f(uniforms.uDoughLateral, dLatVis);
 
     // wave texture unit 0
     gl.activeTexture(gl.TEXTURE0);
