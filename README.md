@@ -85,7 +85,7 @@ build. The exotic-matter requirement is the fundamental barrier — not an engin
 
 ## A nice connection
 
-From the sibling [Kozyrev Mirror](../kozyrev-mirror/) experiment: a chiral spiral boundary
+From the sibling Kozyrev Mirror experiment (not published): a chiral spiral boundary
 *generates* angular momentum from zero. Here, a wormhole throat *filters* angular momentum,
 blocking high-m modes. One creates, one selects — and both effects are **purely geometric**,
 needing no material properties. That symmetry is the prettiest thing in this little suite.
