@@ -33,6 +33,21 @@
 #   scripts/sync-to-prod.sh --prod <path>   # override destination
 set -euo pipefail
 
+# ---------------------------------------------------------------------------
+# DISABLED 2026-09-06 — this script would overwrite the live site with older
+# content. The site's copy (brokenbranchdevwebsite/labs/wormhole) is currently
+# AHEAD of this repo: it carries the 46-orders correction, the aria-labels, the
+# extracted js/wormhole-integrator.js (playground.html's former inline script,
+# which the site's enforced CSP blocks), and the /labs/ paths. This script
+# targets lab/wormhole (gone), omits the integrator, and would restore the
+# inline <script>. Phase 3 of brokenbranchdevwebsite/docs/level-up-plan-2026-09.md
+# back-ports the site's fixes here and replaces this with a pull-mirror in the
+# site repo. Until then, refuse to run.
+echo "sync-to-prod is disabled: it would overwrite the site with older content." >&2
+echo "See brokenbranchdevwebsite/docs/level-up-plan-2026-09.md, Phase 3." >&2
+exit 1
+# ---------------------------------------------------------------------------
+
 SRC_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROD_ROOT="$(cd "$SRC_ROOT/../../../brokenbranchdevwebsite/lab/wormhole" 2>/dev/null && pwd || true)"
 APPLY=0; FORCE_HTML=0

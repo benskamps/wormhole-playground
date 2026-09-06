@@ -53,6 +53,16 @@ param(
   [string]$ProdRoot = "$PSScriptRoot\..\..\..\..\brokenbranchdevwebsite\lab\wormhole"
 )
 
+
+# ---------------------------------------------------------------------------
+# DISABLED 2026-09-06 — this script would overwrite the live site with older
+# content; the site's labs/wormhole copy is ahead of this repo (46-orders
+# correction, aria-labels, extracted integrator, /labs/ paths). Phase 3 of
+# brokenbranchdevwebsite/docs/level-up-plan-2026-09.md back-ports those fixes
+# and replaces this with a pull-mirror in the site repo. Until then, refuse.
+Write-Error "sync-to-prod is disabled: it would overwrite the site with older content. See brokenbranchdevwebsite/docs/level-up-plan-2026-09.md, Phase 3."
+exit 1
+# ---------------------------------------------------------------------------
 $ErrorActionPreference = 'Stop'
 $SrcRoot = Resolve-Path "$PSScriptRoot\.."
 
