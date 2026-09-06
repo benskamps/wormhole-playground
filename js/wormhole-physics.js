@@ -432,7 +432,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // SI instruments — exotic-matter budget (the Jupiter counter / 60-order gap)
+  // SI instruments — exotic-matter budget (the Jupiter counter / 46-order gap at r0 = 1 m)
   // -------------------------------------------------------------------------
 
   function budget(r0_m) {
@@ -632,46 +632,56 @@
     })();
 
     // 2. Critical threshold: b = r0(1 ± 0.02) at r0=1 must straddle the photon
-    //    orbit. The sub-critical ray (b slightly < r0) and super-critical ray
-    //    (b slightly > r0) should land in OPPOSITE universes (or one rings).
+    //    orbit, and each ray must land in the SPECIFIC universe the geometry
+    //    dictates. traceRay labels the exit side by the sign of l: the camera
+    //    sits at l0=+8, so 'A' is the near (camera) universe and 'B' is the far
+    //    one. A sub-critical ray (b<r0) clears the throat and exits at l<0 ⇒ 'B';
+    //    a super-critical ray (b>r0) turns around before the throat and exits
+    //    back at l>0 ⇒ 'A'. "They merely differ" would also pass if the labels
+    //    were swapped, so both sides are asserted explicitly.
     (function () {
       var r0 = 1;
       // theta chosen so b = r0 * sin(theta), aimed INWARD (theta near π).
-      // At l0=8, r(l0)=sqrt(65). Sub-critical b<r0 passes to B; super-critical
-      // b>r0 reflects back to A.
       var rCam = rFromL(8, r0);
       var thetaLow = PI - Math.asin((r0 * 0.98) / rCam);   // b<r0, inward
       var thetaHigh = PI - Math.asin((r0 * 1.02) / rCam);  // b>r0, inward
       var rLow = traceRay(8, thetaLow, r0, { steps: 4000, recordPath: false });
       var rHigh = traceRay(8, thetaHigh, r0, { steps: 4000, recordPath: false });
-      // Sub-critical (b<r0) passes through to universe B; super-critical (b>r0)
-      // reflects back to A. They must differ (one of them may be 'ring').
-      var differ = rLow.universe !== rHigh.universe;
+      var subCriticalReachesFar = (rLow.universe === 'B');
+      var superCriticalReturnsNear = (rHigh.universe === 'A');
       results.push({
-        name: 'critical threshold b≈r0 separates universes',
-        expected: 'b<r0→B / b>r0→A (differ)',
+        name: 'critical threshold b≈r0: b<r0 reaches far universe B, b>r0 returns to near universe A',
+        expected: 'low(b<r0)=B, high(b>r0)=A',
         actual: 'low(b<r0)=' + rLow.universe + ' high(b>r0)=' + rHigh.universe,
-        pass: differ
+        pass: subCriticalReachesFar && superCriticalReturnsNear
       });
     })();
 
-    // 3. Deflection regression: b = 3·r0 (a wide miss) deflects only mildly and
-    //    deterministically. We assert the value is finite, small, and stable
-    //    to 6 decimals against a freshly-recomputed reference (determinism).
+    // 3. Weak-field lensing: for an impact parameter well outside the throat the
+    //    Ellis deflection has the closed-form leading term
+    //        α ≈ (π/4)·(r0/b)²        (Chetouani & Clément 1984; Nakajima & Asada 2012)
+    //    — note the b⁻² fall-off, not Schwarzschild's b⁻¹, because the Ellis
+    //    drainhole has zero ADM mass. At b = 10·r0 the next term is O((r0/b)⁴)
+    //    and the finite start/exit radii of the integration contribute well
+    //    under 1 %, so the integrator must reproduce the closed form to 3 %.
+    //    This is a genuine invariant of the metric: RK4 drift, a wrong sign in
+    //    nullDeriv, or a broken flat-arc subtraction all break it.
     (function () {
       var r0 = 1;
-      var rCam = rFromL(8, r0);
-      var theta = PI - Math.asin((3 * r0) / rCam);  // b = 3, aimed inward
-      var a = traceRay(8, theta, r0, { steps: 1500, recordPath: false });
-      var b = traceRay(8, theta, r0, { steps: 1500, recordPath: false });
-      var deterministic = approx(a.deflection, b.deflection, 1e-6) &&
-        isFinite(a.deflection);
-      // A b=3·r0 ray clears the throat (passes to B) with bounded deflection.
+      var l0 = 20;
+      var b = 10 * r0;
+      var rCam = rFromL(l0, r0);
+      var theta = PI - Math.asin(b / rCam);          // b = 10·r0, aimed inward
+      var r = traceRay(l0, theta, r0, { steps: 1500, recordPath: false });
+      var weakField = (PI / 4) * (r0 * r0) / (b * b);
+      var rel = Math.abs(r.deflection - weakField) / weakField;
+      var TOL = 0.03;
+      var pass = isFinite(r.deflection) && r.universe === 'A' && rel <= TOL;
       results.push({
-        name: 'deflection regression (b=3·r0) finite & deterministic',
-        expected: 'finite, |Δφ| bounded, reproducible 6dp',
-        actual: a.deflection.toFixed(6) + ' rad, univ=' + a.universe,
-        pass: deterministic && Math.abs(a.deflection) < 10
+        name: 'weak-field lensing (b=10·r0) matches α=(π/4)(r0/b)² to 3 %',
+        expected: '≈' + weakField.toFixed(6) + ' rad (±3 %), exits to A',
+        actual: r.deflection.toFixed(6) + ' rad (' + (rel * 100).toFixed(2) + '% off), univ=' + r.universe,
+        pass: pass
       });
     })();
 
