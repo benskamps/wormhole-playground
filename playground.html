@@ -3,7 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1c1510">
 <title>Wormhole Physics Playground · Through the Drainhole</title>
+<meta name="description" content="Send geodesics through the throat, filter by angular momentum, and watch the exotic-matter problem bite. Exploratory physics, not peer-reviewed.">
+<link rel="canonical" href="https://www.brokenbranch.dev/labs/wormhole/playground.html">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.brokenbranch.dev/labs/wormhole/playground.html">
+<meta property="og:title" content="Wormhole Physics Playground · Through the Drainhole">
+<meta property="og:description" content="Send geodesics through the throat, filter by angular momentum, and watch the exotic-matter problem bite. The math is beautiful; the engineering is impossible with known physics.">
+<meta property="og:site_name" content="Broken Branch">
+<meta property="og:image" content="https://www.brokenbranch.dev/labs/wormhole/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Wormhole Physics Playground, a Broken Branch physics card.">
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:url" content="https://www.brokenbranch.dev/labs/wormhole/playground.html">
+<meta property="twitter:title" content="Wormhole Physics Playground · Through the Drainhole">
+<meta property="twitter:description" content="Send geodesics through the throat, filter by angular momentum, and watch the exotic-matter problem bite.">
+<meta property="twitter:image" content="https://www.brokenbranch.dev/labs/wormhole/assets/og.png">
+<meta name="twitter:image:alt" content="Wormhole Physics Playground, a Broken Branch physics card.">
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+  {"@type":"ListItem","position":1,"name":"Home","item":"https://www.brokenbranch.dev/"},
+  {"@type":"ListItem","position":2,"name":"The Lab","item":"https://www.brokenbranch.dev/labs/"},
+  {"@type":"ListItem","position":3,"name":"Wormhole Playground","item":"https://www.brokenbranch.dev/labs/wormhole/playground.html"}]}
+</script>
 <!-- Inline data-URI favicon (no network fetch) — keeps the console clean and
      honors the zero-fetch / file:// constraint. A teal Einstein-ring glyph. -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='6'%20fill='%2304040a'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='9'%20fill='none'%20stroke='%2300f2fe'%20stroke-width='2.5'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='3.2'%20fill='%234facfe'/%3E%3C/svg%3E">
@@ -36,6 +61,14 @@
     --warm:#ffb37a;
   }
   html,body{height:100%}
+  /* skip link: visually hidden until focused, then pinned over the header */
+  .skip-link{
+    position:absolute; left:-9999px; top:8px; z-index:100;
+    padding:8px 14px; border-radius:5px; background:#16182e;
+    border:1px solid var(--accent); color:var(--accent);
+    font-size:.82rem; text-decoration:none;
+  }
+  .skip-link:focus{left:8px; outline:2px solid var(--accent2)}
   body{
     font-family:'Segoe UI',system-ui,sans-serif;
     background:var(--bg); color:var(--ink);
@@ -167,41 +200,42 @@
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to the simulation</a>
 <div id="app">
   <header>
     <div class="brand">
       <h1>WORMHOLE&nbsp;PHYSICS&nbsp;PLAYGROUND</h1>
-      <span class="sub">Through the Drainhole · per-pixel Ellis null geodesics · honest physics</span>
+      <span class="sub">Through the Drainhole · per-pixel Ellis null geodesics</span>
     </div>
     <div class="hdr-actions">
-      <button id="hdr-dough" type="button" disabled title="Coming soon">Doughnut · soon</button>
+      <button id="hdr-dough" type="button" disabled title="Becomes active when the instrument loads">Doughnut</button>
       <button id="hdr-traverse" class="hot" type="button">Traverse</button>
       <button id="hdr-tour" type="button">Tour</button>
     </div>
   </header>
 
-  <main>
-    <aside id="sidebar"><!-- WormholeUI builds all controls in here --></aside>
+  <main id="main" tabindex="-1">
+    <aside id="sidebar" aria-label="Simulation controls"><!-- WormholeUI builds all controls in here --></aside>
 
     <section id="hero-wrap">
-      <canvas id="hero"></canvas>
+      <canvas id="hero" role="img" aria-label="Interactive wormhole traversal scene"></canvas>
       <!-- WormholeUI mounts HUD / flight label / collapse banner / fallback here -->
       <div id="hud"></div>
       <div id="banner"></div>
     </section>
 
-    <aside id="rail">
+    <aside id="rail" aria-label="Diagnostic panels">
       <div class="rail-panel">
         <div class="rail-title">Cross-section · isometric embedding · ray inspector</div>
-        <canvas id="cs-canvas"></canvas>
+        <canvas id="cs-canvas" role="img" aria-label="Wormhole cross-section and embedding diagram"></canvas>
       </div>
       <div class="rail-panel">
         <div class="rail-title">m-mode wave · corrected V_eff · T / R</div>
-        <canvas id="wave-canvas"></canvas>
+        <canvas id="wave-canvas" role="img" aria-label="Wormhole wave transmission and reflection plot"></canvas>
       </div>
       <div class="rail-panel">
         <div class="rail-title">Exotic-matter ledger · Jupiter counter</div>
-        <canvas id="ledger-canvas"></canvas>
+        <canvas id="ledger-canvas" role="img" aria-label="Exotic-matter energy ledger visualization"></canvas>
       </div>
     </aside>
   </main>
@@ -212,12 +246,12 @@
     <span class="eq">ρ = <span class="neg">−r0²/(8π r⁴) &lt; 0</span> (exotic)</span>
     <span class="eq">b_c = r0</span>
     <span class="eq">z(l) = r0·asinh(l/r0)</span>
-    <span class="brandtag">coherence-lab · spectacle that visualizes real solutions, never fakes them</span>
+    <span class="brandtag">broken branch lab · spectacle that visualizes real solutions</span>
   </footer>
 </div>
 
-<button id="sidebar-toggle" type="button">Controls</button>
-<button id="rail-toggle" type="button">Panels</button>
+<button id="sidebar-toggle" type="button" aria-expanded="false" aria-controls="sidebar">Controls</button>
+<button id="rail-toggle" type="button" aria-expanded="false" aria-controls="rail">Panels</button>
 
 <div id="boot-error">
   <div class="card">
@@ -234,282 +268,9 @@
 <script src="js/wormhole-panels.js"></script>
 <script src="js/wormhole-ui.js"></script>
 
-<script>
-/* ============================================================================
- * INTEGRATOR  — wires the four globals into one running product.
- * Pure glue: it owns no physics. It reads ui.state every frame (single source
- * of truth), drives the wave solver on launch actions, bridges click-a-pixel
- * inspection (WormholeGL.pixelToRay → WormholePhysics.traceRay), and renders.
- * ==========================================================================*/
-(function () {
-  'use strict';
-
-  function bootError(msg) {
-    var box = document.getElementById('boot-error');
-    var det = document.getElementById('boot-error-detail');
-    if (det) det.textContent = msg || '';
-    if (box) box.style.display = 'flex';
-    console.error('[integrator] boot error: ' + msg);
-  }
-
-  function boot() {
-    // ---- verify all four globals are present ----
-    var missing = [];
-    if (!window.WormholePhysics) missing.push('WormholePhysics');
-    if (!window.WormholeGL)      missing.push('WormholeGL');
-    if (!window.WormholePanels)  missing.push('WormholePanels');
-    if (!window.WormholeUI)      missing.push('WormholeUI');
-    if (missing.length) {
-      bootError('Missing module global(s): ' + missing.join(', ') +
-        '. Check that js/ is next to playground.html and the <script> tags resolved.');
-      return;
-    }
-
-    var Physics = window.WormholePhysics;
-    var GL = window.WormholeGL;
-    var Panels = window.WormholePanels;
-    var UI = window.WormholeUI;
-
-    // ---- DOM handles ----
-    var heroCanvas = document.getElementById('hero');
-    var sidebarEl  = document.getElementById('sidebar');
-    var hudEl      = document.getElementById('hud');
-    var bannerEl   = document.getElementById('banner');
-    var csCanvas   = document.getElementById('cs-canvas');
-    var waveCanvas = document.getElementById('wave-canvas');
-    var ledgerCanvas = document.getElementById('ledger-canvas');
-
-    // ========================================================================
-    // 1. STARTUP SELF-TEST  (log each assertion; surface PASS/FAIL chip)
-    // ========================================================================
-    var selfTestReport;
-    try {
-      selfTestReport = Physics.selfTest();
-    } catch (e) {
-      selfTestReport = { passed: false, results: [{ name: 'selfTest threw', expected: 'no throw', actual: String(e), pass: false }] };
-    }
-    console.log('%c━━━ Wormhole physics self-test ━━━', 'color:#4facfe;font-weight:bold');
-    (selfTestReport.results || []).forEach(function (r) {
-      var tag = r.pass ? '%cPASS' : '%cFAIL';
-      var style = r.pass ? 'color:#7af0a8' : 'color:#ff8a96;font-weight:bold';
-      console.log(tag + '%c  ' + r.name + '  →  expected ' + r.expected + ', got ' + r.actual,
-        style, 'color:inherit');
-    });
-    console.log('%c━━━ self-test ' + (selfTestReport.passed ? 'PASSED' : 'FAILED') + ' (' +
-      (selfTestReport.results || []).filter(function (r) { return r.pass; }).length + '/' +
-      (selfTestReport.results || []).length + ') ━━━',
-      selfTestReport.passed ? 'color:#7af0a8;font-weight:bold' : 'color:#ff8a96;font-weight:bold');
-
-    // ========================================================================
-    // 2. WAVE SOLVER  (single source — GL shell + panel plot both read it)
-    // ========================================================================
-    var solver = Physics.makeWaveSolver({ n: 400, lMin: -12, lMax: 12 });
-    var waveRunning = false;   // true once a packet is launched
-    var WAVE_DT = 0.02;
-
-    // ========================================================================
-    // 3. WEBGL RAYTRACER
-    // ========================================================================
-    var glStatus = GL.init(heroCanvas);
-    var glOk = !!(glStatus && glStatus.ok);
-
-    // ========================================================================
-    // 4. CANVAS-2D PANELS  (inspector rail; also the fallback experience)
-    // ========================================================================
-    var panels = Panels.create({
-      crossSectionCanvas: csCanvas,
-      waveCanvas: waveCanvas,
-      ledgerCanvas: ledgerCanvas
-    });
-
-    // ========================================================================
-    // 5. UI  (controls + HUD + pointer + traverse + doughnut + tour + audio)
-    // ========================================================================
-    var ui = UI.init({
-      sidebarEl: sidebarEl,
-      hudEl: hudEl,
-      bannerEl: bannerEl,
-      heroCanvas: heroCanvas
-    });
-    ui.setSelfTest(selfTestReport);
-
-    if (!glOk) {
-      // styled banner + panels-only experience
-      ui.showFallback(glStatus ? glStatus.reason : 'no-webgl2');
-      console.warn('[integrator] WebGL2 raytracer offline (' +
-        (glStatus ? glStatus.reason : 'unknown') + ') — running Canvas-2D panel fallback.');
-    }
-
-    // wire the header action buttons → the UI's own handlers
-    wireHeaderButton('hdr-dough', ui._sendDoughnut);
-    wireHeaderButton('hdr-traverse', ui._startTraverse);
-    wireHeaderButton('hdr-tour', ui._tourStart);
-
-    // The doughnut header button ships disabled ("Doughnut · soon"); enable +
-    // relabel it once the UI reports the throat-crossing is no longer gated.
-    (function () {
-      var b = document.getElementById('hdr-dough');
-      if (b && ui._doughnutGated === false) {
-        b.disabled = false;
-        b.textContent = 'Send Doughnut';
-        b.title = 'Send the mascot through the throat';
-      }
-    })();
-
-    function wireHeaderButton(id, fn) {
-      var b = document.getElementById(id);
-      if (b && typeof fn === 'function') b.addEventListener('click', fn);
-    }
-
-    // mobile drawer toggles
-    (function () {
-      var sb = document.getElementById('sidebar');
-      var rl = document.getElementById('rail');
-      var sbt = document.getElementById('sidebar-toggle');
-      var rlt = document.getElementById('rail-toggle');
-      if (sbt) sbt.addEventListener('click', function () { sb.classList.toggle('open'); });
-      if (rlt) rlt.addEventListener('click', function () { rl.classList.toggle('open'); });
-    })();
-
-    // ========================================================================
-    // 6. RESIZE  (hero GL + the three panel canvases)
-    // ========================================================================
-    function doResize() {
-      var rect = heroCanvas.parentElement.getBoundingClientRect();
-      var dpr = window.devicePixelRatio || 1;
-      if (glOk) GL.resize(Math.max(1, rect.width), Math.max(1, rect.height), dpr);
-      panels.resize();
-    }
-    window.addEventListener('resize', doResize);
-    doResize();
-
-    // ========================================================================
-    // 7. STATE TRACKING for solver setM + inspector overlay
-    // ========================================================================
-    var lastM = ui.state.m;
-    solver.setM(lastM);
-
-    var overlay = null;   // last inspector traceRay result, drawn on the cross-section
-
-    // ========================================================================
-    // 8. ACTION ROUTER  — drain ui.pollActions() each frame and do the
-    //    integrator-owned side effects (launchWave / reseed / inspect).
-    //    traverse / sendDoughnut / resetThroat are applied inside the UI;
-    //    we no-op them here (they still arrive in the queue per the contract).
-    // ========================================================================
-    function handleActions() {
-      var queue = ui.pollActions();
-      for (var i = 0; i < queue.length; i++) {
-        var a = queue[i];
-        switch (a.type) {
-          case 'launchWave':
-            solver.setM(ui.state.m);
-            lastM = ui.state.m;
-            solver.launch({
-              l0: ui.state.waveLaunch.l0,
-              k: ui.state.waveLaunch.k,
-              width: ui.state.waveLaunch.width,
-              m: ui.state.m
-            });
-            waveRunning = true;
-            break;
-          case 'reseed':
-            GL.reseedSky(Math.random() * 1000, Math.random() * 1000 + 500);
-            break;
-          case 'inspect': {
-            // click-a-pixel → re-integrate that exact ray on the CPU.
-            // WormholeGL.pixelToRay produces ICs for the SAME camera basis the
-            // shader used; WormholePhysics.traceRay reproduces the pixel.
-            var ray = GL.pixelToRay(a.px, a.py, ui.state);
-            var result = Physics.traceRay(ui.state.camL, ray.theta, ui.state.r0, {
-              steps: 2000, recordPath: true
-            });
-            ui.setInspector(result);
-            overlay = result;
-            break;
-          }
-          // traverse / sendDoughnut / resetThroat: UI already applied them.
-          default: break;
-        }
-      }
-    }
-
-    // ========================================================================
-    // 9. MAIN rAF LOOP
-    // ========================================================================
-    var tPrev = performance.now();
-
-    function frame(tNow) {
-      var dt = (tNow - tPrev) / 1000;
-      if (!isFinite(dt) || dt < 0) dt = 0.016;
-      if (dt > 0.1) dt = 0.1;          // clamp long gaps (tab backgrounded)
-      tPrev = tNow;
-
-      // --- drain UI actions (launchWave / reseed / inspect; rest already applied) ---
-      handleActions();
-
-      // --- keep the solver's m in sync with the slider even without a relaunch ---
-      if (ui.state.m !== lastM) {
-        solver.setM(ui.state.m);
-        lastM = ui.state.m;
-      }
-
-      // --- advance the wave field while a packet is live ---
-      if (waveRunning) {
-        solver.step(WAVE_DT, ui.state.r0, 5);
-        if (glOk) GL.setWaveField(solver.amplitude, -12, 12);
-      }
-      var trans = solver.getTransmission();
-
-      // --- SI budget for the current throat at the selected physical scale ---
-      var budget = Physics.budget(ui.state.r0 * ui.state.scale_m);
-
-      // --- advance UI (traverse easing, doughnut crossing, stability toy, HUD) ---
-      ui.update(dt, {
-        stats: glOk ? GL.getStats() : null,
-        trans: trans,
-        budget: budget,
-        selfTest: selfTestReport
-      });
-
-      // --- render the hero ---
-      if (glOk) GL.render(ui.state);
-
-      // --- render the inspector rail panels ---
-      panels.renderCrossSection(ui.state, overlay);
-      panels.renderWave(
-        solver.amplitude, solver.lGrid,
-        solver.potential(ui.state.r0, ui.state.m),
-        ui.state.r0, ui.state.m, trans
-      );
-      panels.renderLedger(budget, ui.state.r0 * ui.state.scale_m);
-
-      requestAnimationFrame(frame);
-    }
-
-    requestAnimationFrame(frame);
-
-    // tiny debug handle (does not add a new namespace beyond this one)
-    window.__wormhole = {
-      get state() { return ui.state; },
-      solver: solver, selfTest: selfTestReport,
-      relaunch: function () {
-        solver.launch({ l0: ui.state.waveLaunch.l0, k: ui.state.waveLaunch.k, m: ui.state.m });
-        waveRunning = true;
-      }
-    };
-
-    console.log('%c[integrator] Wormhole Playground booted. WebGL2: ' +
-      (glOk ? 'ON' : 'FALLBACK') + '. Click a pixel to trace a ray; Traverse to fly through the throat.',
-      'color:#4facfe');
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-})();
-</script>
+<script src="js/wormhole-integrator.js"></script>
+    <!-- Vercel Web Analytics -->
+    <script src="/js/va-shim.js"></script>
+    <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>

@@ -263,13 +263,17 @@
       lab.appendChild(name); lab.appendChild(val);
       var inp = el('input');
       inp.type = 'range';
+      inp.setAttribute('aria-label', label);
       inp.min = opt.min; inp.max = opt.max; inp.step = opt.step;
       inp.value = opt.value;
       row.appendChild(lab); row.appendChild(inp);
       parent.appendChild(row);
       function paint() {
         var v = parseFloat(inp.value);
-        val.textContent = (opt.fmt ? opt.fmt(v) : v.toFixed(opt.dec == null ? 1 : opt.dec));
+        var text = (opt.fmt ? opt.fmt(v) : v.toFixed(opt.dec == null ? 1 : opt.dec));
+        val.textContent = text;
+        // screen readers announce the formatted value (+ unit when the label has one)
+        inp.setAttribute('aria-valuetext', opt.unit ? text + ' ' + opt.unit : text);
       }
       inp.addEventListener('input', function () {
         var v = parseFloat(inp.value);
@@ -303,7 +307,7 @@
       set: function (v) { state.r0 = v; }
     });
     var sSteps = slider(gGeo, 'RK4 steps', {
-      min: 32, max: 192, step: 8, value: state.steps, dec: 0,
+      min: 32, max: 192, step: 8, value: state.steps, dec: 0, unit: 'steps',
       set: function (v) { state.steps = Math.round(v); }
     });
     note(gGeo, 'Each pixel RK4-integrates a null geodesic of ds² = −dt² + dl² + (l²+r0²)dΩ². More steps = sharper ring.');
@@ -345,7 +349,7 @@
     // -- Doughnut group --
     var gDough = group('🍩 The Doughnut');
     var sDspeed = slider(gDough, 'Crossing speed v/c', {
-      min: 0.01, max: 0.5, step: 0.01, value: state.doughnutSpeed, dec: 2,
+      min: 0.01, max: 0.5, step: 0.01, value: state.doughnutSpeed, dec: 2, unit: 'c',
       set: function (v) { state.doughnutSpeed = v; state.doughnut.vFrac = v; }
     });
     var doughLabel = DOUGHNUT_COMING_SOON ? 'Coming soon 🍩' : 'Send the doughnut 🍩';
@@ -406,7 +410,7 @@
       scaleBtns.push(b);
     });
     gScale.appendChild(scaleSeg);
-    note(gScale, 'Sets r0 in meters for the exotic-matter ledger and tidal/survival numbers. 1 m ≈ 1.1 M_Jup &amp; ~47 orders; 1 nm ≈ 10⁴³ kg/m³ &amp; ~65 orders.');
+    note(gScale, 'Sets r0 in meters for the exotic-matter ledger and tidal/survival numbers. 1 m ≈ 1.1 M_Jup &amp; ~46 orders; 1 nm ≈ 5×10⁴³ kg/m³ &amp; ~64 orders.');
 
     // -- Scene / sky group --
     var gScene = group('Scene');
@@ -442,21 +446,24 @@
       var startX = 0, startY = 0, lastX = 0, lastY = 0;
       var DRAG_THRESHOLD = 5; // px before a press counts as a drag (not a click)
 
-      canvas.addEventListener('mousedown', function (e) {
-        dragging = true; moved = false;
-        startX = lastX = e.clientX; startY = lastY = e.clientY;
-        // resume audio context on first gesture if it exists
-        resumeAudio();
-      });
-      window.addEventListener('mousemove', function (e) {
+      // The window-level move/up listeners exist only for the duration of a
+      // drag: attached on mousedown, detached on mouseup (or if the window
+      // loses focus mid-drag). Nothing runs on the window while idle.
+      function onMove(e) {
         if (!dragging) return;
         var dx = e.clientX - lastX, dy = e.clientY - lastY;
         lastX = e.clientX; lastY = e.clientY;
         if (Math.abs(e.clientX - startX) + Math.abs(e.clientY - startY) > DRAG_THRESHOLD) moved = true;
         state.yaw += dx * 0.005;
         state.pitch = clamp(state.pitch - dy * 0.005, -1.45, 1.45);
-      });
-      window.addEventListener('mouseup', function (e) {
+      }
+      function detachDrag() {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        window.removeEventListener('blur', onBlur);
+      }
+      function onUp(e) {
+        detachDrag();
         if (!dragging) return;
         dragging = false;
         if (!moved) {
@@ -468,6 +475,21 @@
             emit({ type: 'inspect', px: px, py: py });
           }
         }
+      }
+      function onBlur() {
+        // window lost focus mid-drag: end the drag without an inspect click
+        detachDrag();
+        dragging = false;
+      }
+      canvas.addEventListener('mousedown', function (e) {
+        if (e.button !== 0) return;               // left button only
+        dragging = true; moved = false;
+        startX = lastX = e.clientX; startY = lastY = e.clientY;
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        window.addEventListener('blur', onBlur);
+        // resume audio context on first gesture if it exists
+        resumeAudio();
       });
       canvas.addEventListener('wheel', function (e) {
         e.preventDefault();
@@ -811,7 +833,8 @@
       flightLabel.style.display = 'none';
       var reasonText = ({
         'no-webgl2': 'WebGL2 is not available in this browser.',
-        'shader-compile': 'The raytracer shader failed to compile on this GPU.'
+        'shader-compile': 'The raytracer shader failed to compile on this GPU.',
+        'context-lost': 'WebGL context lost — reload to restore'
       })[reason] || ('WebGL2 raytracer unavailable' + (reason ? ' (' + reason + ')' : '') + '.');
 
       if (!fallbackBox) {
@@ -827,6 +850,11 @@
         'computed on the CPU. They become the experience.</p>' +
         '<p style="color:#7ec8ff">ds² = −dt² + dl² + (l²+r0²)dΩ²</p>';
       fallbackBox.style.display = 'block';
+    }
+    // inverse of showFallback — used after a webglcontextrestored re-init
+    function hideFallback() {
+      if (fallbackBox) fallbackBox.style.display = 'none';
+      if (heroCanvas) heroCanvas.style.display = '';
     }
 
     // ===================================================================== //
@@ -1037,8 +1065,9 @@
     // reachable even if the integrator's header has no slot. (Sidebar-owned per
     // the contract: "builds all controls into sidebarEl".)
     var headerStrip = el('div', 'wh-grp wh-mini');
-    var bSend = el('button', 'wh-btn', 'Doughnut · soon'); bSend.type = 'button';
-    bSend.disabled = true; bSend.title = 'Coming soon';
+    var bSend = el('button', 'wh-btn', DOUGHNUT_COMING_SOON ? 'Doughnut · soon' : 'Send Doughnut'); bSend.type = 'button';
+    bSend.disabled = DOUGHNUT_COMING_SOON;
+    bSend.title = DOUGHNUT_COMING_SOON ? 'Coming soon' : 'Send the mascot through the throat';
     var bTrav = el('button', 'wh-btn wh-hot', 'Traverse'); bTrav.type = 'button';
     bSend.addEventListener('click', function () { if (!DOUGHNUT_COMING_SOON) emit({ type: 'sendDoughnut' }); });
     bTrav.addEventListener('click', function () { emit({ type: 'traverse' }); });
@@ -1057,6 +1086,7 @@
       attachPointer: attachPointer,
       setInspector: setInspector,
       showFallback: showFallback,
+      hideFallback: hideFallback,
       setSelfTest: setSelfTest,
       // extra surfaced handles (not in the strict contract but harmless + useful
       // for the integrator if it wants to mount the inspector card elsewhere)

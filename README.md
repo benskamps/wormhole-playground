@@ -5,7 +5,7 @@ Morris–Thorne / Ellis metric, geodesics through the throat, wave propagation i
 curved space, and the exotic-matter problem that makes the whole thing impossible
 to actually build.
 
-> 🌲 Part of the [Brokenbranch Lab](https://www.brokenbranch.dev/lab/) — one human and a
+> 🌲 Part of the [Brokenbranch Lab](https://www.brokenbranch.dev/labs/) — one human and a
 > cluster of AI agents shipping strange software in public. This is one experiment among
 > many; the front door lists them all.
 
@@ -19,6 +19,9 @@ to actually build.
 1. Open `index.html` for the landing page and results, or double-click
    `playground.html` for the interactive simulator. It runs straight off disk
    (`file://`) — no build step, no dependencies, no server, no network fetches.
+   (One cosmetic exception: the landing page's monospace font, JetBrains Mono,
+   is served by brokenbranch.dev from its `/fonts/` directory. Opened from disk
+   the page simply falls back to your system monospace face.)
 2. In the playground: **drag** the hero view to look around, **scroll** to dolly
    the camera along the throat axis, and **click any pixel** to re-integrate that
    exact ray on the CPU and read off its impact parameter, deflection, and winding.
@@ -77,7 +80,7 @@ unavailable, and stays ≥30 fps on a 4K window via a dynamic-resolution governo
 | **Angular-momentum filtering** | ✅ Robust | m=0 passes freely; higher-m modes reflect off the centrifugal barrier at the throat. Pure geometry. |
 | Stability | ⚠️ Conditional | Stable configs exist **only** with continuously sustained exotic matter. Remove it → collapse. |
 | **Formation from flat space** | ❌ Impossible (classically) | Exotic matter can *deform* spacetime but cannot change its *topology*. Creating a wormhole needs new physics. |
-| Exotic-matter budget | ❌ 60-order gap | A 1 m throat needs ~10⁴³ kg/m³ of negative energy density; the Casimir effect gives ~10⁻⁴ J/m³. |
+| Exotic-matter budget | ❌ 46-order gap | A 1 m throat needs ~5×10²⁵ kg/m³ of negative energy density (≈5×10⁴² J/m³); the Casimir effect gives ~4×10⁻⁴ J/m³. |
 
 **The honest bottom line:** the mathematics is beautiful and internally consistent, the
 physics is self-consistent, but the engineering is impossible with anything we know how to
@@ -122,24 +125,33 @@ python formation.py          # watch formation fail to change topology
 
 ## Built With
 
-A collaboration between human scientific curiosity and Claude (Anthropic). Part of the
-[Coherence Lab](https://www.brokenbranch.dev/coherence-lab/) physics playground.
+Built by one human and a cluster of AI agents. Part of
+[the Lab](https://www.brokenbranch.dev/labs/) — the Broken Branch physics playground.
 
-## Deploying to the website
+## How this reaches the website
 
-This repo is the **source of truth**. The live copy at
-`brokenbranchdevwebsite/lab/wormhole` is a separate tree that carries prod-only
-edits (injected SEO/OG/JSON-LD in the HTML `<head>`). Sync runtime changes with:
+This repository is the **source of truth**. The live copy at
+[brokenbranch.dev/labs/wormhole/](https://www.brokenbranch.dev/labs/wormhole/) is
+a **pull mirror**: once a day the site fetches the following files from this repo
+and serves them verbatim — there is no push step and no hand-editing on the site
+side.
 
-```sh
-scripts/sync-to-prod.sh            # dry run (JS only); --apply to write
-scripts/sync-to-prod.ps1           # PowerShell equivalent
-```
+| Mirrored (served by the site) | Stays here only (research record) |
+|---|---|
+| `index.html`, `playground.html`, `README.md` | The Python scripts (`*.py`) and `CONCEPT.md` |
+| `js/*.js` (every module, including the integrator and the landing-page glue) | `formation*.png`, `formation.gif`, `wormhole_embedding.png`, `wormhole_stability.png`, `wormhole_traversal.png`, `wormhole_wave.gif` |
+| `assets/og.png` | |
+| `wormhole_wave_m0.png`, `wormhole_wave_m2.png`, `wormhole_wave_m5.png` | |
 
-It copies the `js/*.js` payload by default and **refuses to overwrite the HTML +
-README** unless you pass `--force-html`, so prod's SEO head survives. The script
-only touches the local website working tree -- it never commits or pushes; review
-and deploy through the website repo's own workflow.
+Practical consequences:
+
+- Anything you merge into those files is on the site within a day, as-is. Keep the
+  HTML `<head>` (canonical URL, Open Graph, JSON-LD breadcrumbs) intact when editing.
+- The pages must keep working from `file://` **and** under the site's
+  `script-src 'self'` Content-Security-Policy, so no inline `<script>` blocks — put
+  page logic in `js/`.
+- The un-mirrored figures and scripts are the numerical record behind the results
+  table; they are not served, but they are what the claims are checked against.
 
 ## License
 

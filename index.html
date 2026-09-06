@@ -1,32 +1,67 @@
 <!DOCTYPE html>
 <!--
     Wormhole Physics Playground — landing page.
-    Honest exploratory physics. Not peer-reviewed. The math is beautiful;
+    Exploratory physics. Not peer-reviewed. The math is beautiful;
     the engineering is impossible with known physics, and this page says so.
-    Part of the Coherence Lab playground inside Broken Branch.
+    Part of the Lab playground inside Broken Branch.
 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Wormhole Physics Playground</title>
-    <meta name="description" content="An interactive, honest exploration of traversable-wormhole physics: the Morris-Thorne metric, geodesics through the throat, angular-momentum filtering, and the exotic-matter problem. Not peer-reviewed; rigorously honest about it.">
+    <title>Wormhole Physics Playground — traversable wormholes · Broken Branch</title>
+    <meta name="description" content="Traversable-wormhole physics you can run: the Morris-Thorne metric, geodesics through the throat, angular-momentum filtering, and the exotic-matter problem.">
     <meta name="author" content="Benjamin Schippers">
     <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.brokenbranch.dev/labs/wormhole/">
 
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.brokenbranch.dev/labs/wormhole/">
     <meta property="og:title" content="Wormhole Physics Playground">
     <meta property="og:description" content="Model the physics of a traversable wormhole. The math is beautiful; the engineering is impossible with known physics.">
+    <meta property="og:site_name" content="Broken Branch">
+    <meta property="og:image" content="https://www.brokenbranch.dev/labs/wormhole/assets/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Wormhole Physics Playground, a Broken Branch physics card.">
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://www.brokenbranch.dev/labs/wormhole/">
+    <meta property="twitter:title" content="Wormhole Physics Playground">
+    <meta property="twitter:description" content="Model the physics of a traversable wormhole. The math is beautiful; the engineering is impossible with known physics.">
+    <meta property="twitter:image" content="https://www.brokenbranch.dev/labs/wormhole/assets/og.png">
+    <meta name="twitter:image:alt" content="Wormhole Physics Playground, a Broken Branch physics card.">
+
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+      {"@type":"ListItem","position":1,"name":"Home","item":"https://www.brokenbranch.dev/"},
+      {"@type":"ListItem","position":2,"name":"The Lab","item":"https://www.brokenbranch.dev/labs/"},
+      {"@type":"ListItem","position":3,"name":"Wormhole","item":"https://www.brokenbranch.dev/labs/wormhole/"}]}
+    </script>
 
     <meta name="theme-color" content="#0a0a0b">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='none' stroke='%2310b981' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='16' fill='none' stroke='%238b5cf6' stroke-width='6'/%3E%3C/svg%3E">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
     <style>
+        /* Self-hosted mono face, served by brokenbranch.dev from /fonts/ (same
+           files as the site's css/tokens.css). On a file:// open the URLs do not
+           resolve and the stack falls through to the system monospace. */
+        @font-face {
+            font-family: 'JetBrains Mono';
+            font-style: normal;
+            font-weight: 300 700;
+            font-display: swap;
+            src: url('/fonts/jetbrainsmono-normal-latin.woff2') format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+        @font-face {
+            font-family: 'JetBrains Mono';
+            font-style: normal;
+            font-weight: 300 700;
+            font-display: swap;
+            src: url('/fonts/jetbrainsmono-normal-latinext.woff2') format('woff2');
+            unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+        }
         :root {
             --bg: #0a0a0b;
             --bg-elevated: #111113;
@@ -42,36 +77,61 @@
             --accent: #8b5cf6;
             --accent-hover: #a78bfa;
             --warn: #f59e0b;
-            --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            --font-sans: "Segoe UI Variable", "Segoe UI", Helvetica, Arial, sans-serif;
+            --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        .skip-link { position: absolute; left: -9999px; top: 0.75rem; z-index: 100; padding: 0.55rem 0.9rem; border-radius: 8px; background: var(--bg-elevated); border: 1px solid var(--primary); color: var(--primary-hover); font-family: var(--font-mono); font-size: 0.8rem; }
+        .skip-link:focus { left: 0.75rem; outline: 2px solid var(--primary); }
         body {
             background: var(--bg); color: var(--text);
             font-family: var(--font-sans); line-height: 1.65;
             -webkit-font-smoothing: antialiased; padding: 0 1.5rem 5rem;
         }
-        .wrap { max-width: 860px; margin: 0 auto; }
+        .wrap { max-width: 1180px; margin: 0 auto; }
         a { color: var(--primary); text-decoration: none; }
         a:hover { color: var(--primary-hover); }
 
         .back { display: inline-block; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); margin: 2.5rem 0 0; }
         .back:hover { color: var(--text-secondary); }
 
-        .hero { padding: 3.5rem 0 1rem; text-align: center; }
+        .hero { padding: 2.4rem 0 1rem; }
+        .hero-grid { display: grid; grid-template-columns: minmax(300px,.7fr) minmax(620px,1.3fr); gap: clamp(2rem,5vw,5rem); align-items: center; }
+        .hero-copy { max-width: 470px; }
         .eyebrow { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent-hover); margin-bottom: 1rem; }
         h1 { font-size: clamp(2.4rem, 7vw, 3.8rem); font-weight: 700; line-height: 1.04; letter-spacing: -0.02em; margin-bottom: 1.25rem; }
         h1 .glow { color: var(--primary); }
-        .lede { font-size: 1.2rem; color: var(--text-secondary); max-width: 62ch; margin: 0 auto; }
+        .lede { font-size: 1.12rem; color: var(--text-secondary); max-width: 62ch; margin: 0; }
 
-        .hero-actions { display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+        .hero-actions { display: flex; gap: 0.85rem; justify-content: flex-start; flex-wrap: wrap; margin-top: 2rem; }
         .btn { font-family: var(--font-mono); font-size: 0.9rem; padding: 0.8rem 1.5rem; border-radius: 10px; border: 1px solid var(--border); transition: all 0.2s ease; }
         .btn.primary { background: var(--primary); color: #04221a; border-color: var(--primary); font-weight: 500; }
         .btn.primary:hover { background: var(--primary-hover); color: #04221a; transform: translateY(-2px); }
         .btn.ghost { color: var(--text-secondary); }
         .btn.ghost:hover { border-color: var(--border-hover); color: var(--text); }
 
-        .hero-img { width: 100%; max-width: 620px; margin: 2.75rem auto 0; display: block; border-radius: 14px; border: 1px solid var(--border); }
+        .instrument-preview { --preview-scale:.49; position:relative; height:442px; overflow:hidden; border:1px solid var(--border-hover); background:#05070b; isolation:isolate; }
+        .instrument-preview::after { content:''; position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 90px rgba(3,5,8,.52); }
+        .instrument-preview iframe { width:1440px; height:900px; border:0; transform:scale(var(--preview-scale)); transform-origin:0 0; pointer-events:none; }
+        .instrument-poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:center; display:block; }
+        .instrument-activate { position:absolute; z-index:4; left:50%; top:50%; transform:translate(-50%,-50%); padding:.85rem 1.3rem; cursor:pointer; background:rgba(5,7,11,.86); border:1px solid var(--primary); border-radius:10px; color:var(--primary-hover); font:500 .82rem/1.2 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; backdrop-filter:blur(8px); transition:background .2s ease, color .2s ease; }
+        .instrument-activate:hover, .instrument-activate:focus-visible { background:var(--primary); color:#04221a; outline:none; }
+        .instrument-activate small { display:block; margin-top:.35rem; font-weight:400; font-size:.62rem; letter-spacing:.06em; text-transform:none; color:var(--text-secondary); }
+        .instrument-activate:hover small, .instrument-activate:focus-visible small { color:#04221a; }
+        .instrument-enter { position:absolute; z-index:4; right:1rem; bottom:1rem; padding:.65rem .9rem; background:rgba(5,7,11,.88); border:1px solid var(--primary); color:var(--primary-hover); font:500 .72rem/1.2 var(--font-mono); letter-spacing:.08em; text-transform:uppercase; backdrop-filter:blur(8px); }
+        .instrument-enter:hover { background:var(--primary); color:#04221a; }
+        .preview-note { margin-top:1rem; color:var(--text-muted); font:.68rem/1.55 var(--font-mono); letter-spacing:.04em; }
+        @media (max-width: 980px) {
+            .hero-grid { grid-template-columns:1fr; }
+            .hero-copy { max-width:680px; }
+            .instrument-preview { --preview-scale:.47; max-width:677px; }
+        }
+        @media (max-width: 640px) {
+            body { padding-inline:1rem; }
+            .hero { padding-top:1.5rem; }
+            .instrument-preview { --preview-scale:.24; height:216px; max-width:346px; }
+            .instrument-enter { right:.6rem; bottom:.6rem; padding:.5rem .65rem; font-size:.61rem; }
+        }
 
         .disclaimer { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px; padding: 1.3rem 1.6rem; margin: 3rem 0 0; color: var(--text-secondary); font-size: 0.97rem; }
         .disclaimer strong { color: var(--warn); }
@@ -112,44 +172,63 @@
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <a class="back" href="https://www.brokenbranch.dev/coherence-lab/">&larr; coherence lab</a>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <main class="wrap" id="main" tabindex="-1">
+        <a class="back" href="https://www.brokenbranch.dev/labs/">&larr; the lab</a>
 
         <div class="hero">
-            <p class="eyebrow">Coherence Lab · Wormhole</p>
-            <h1>Model a <span class="glow">wormhole</span>.<br>Honestly.</h1>
-            <p class="lede">
-                Not a picture of a wormhole — the actual physics. The Morris–Thorne metric,
-                particles falling through the throat, waves bending in curved space, and the
-                one problem that ruins everything: exotic matter.
-            </p>
-            <div class="hero-actions">
-                <a class="btn primary" href="playground.html">Open the playground &rarr;</a>
-                <a class="btn ghost" href="#results">See the results</a>
+            <div class="hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow">The Lab · Wormhole</p>
+                    <h1>Model a <span class="glow">wormhole</span>.</h1>
+                    <p class="lede">The Morris–Thorne metric, particles crossing the throat, waves bending in curved space&mdash;and the exotic-matter wall that ruins the engineering.</p>
+                    <div class="hero-actions">
+                        <a class="btn primary" href="playground.html">Open the playground &rarr;</a>
+                        <a class="btn ghost" href="#results">See the results</a>
+                    </div>
+                    <p class="preview-note">Live instrument preview · actual RK4 geodesics · self-tests run on load</p>
+                </div>
+                <!-- Static poster by default; the live playground (a second WebGL2
+                     context) is only embedded when the reader asks for it.
+                     Handler: js/wormhole-landing.js (no inline script — the site
+                     ships script-src 'self'). -->
+                <div class="instrument-preview" id="instrument-preview">
+                    <img class="instrument-poster" src="assets/og.png" width="1200" height="630" alt="Poster frame of the Wormhole Physics Playground: the Einstein ring of an Ellis throat with a second universe visible through the opening" decoding="async">
+                    <button class="instrument-activate" id="instrument-activate" type="button" aria-controls="instrument-preview">Open the live instrument<small>runs the WebGL2 raytracer in place</small></button>
+                    <a class="instrument-enter" href="playground.html">Enter the live instrument &rarr;</a>
+                </div>
             </div>
-            <img class="hero-img" src="wormhole_embedding.png" alt="Embedding diagram of a traversable wormhole throat connecting two regions of space" loading="lazy">
         </div>
 
         <div class="disclaimer">
             <strong>This is not peer-reviewed research.</strong> It's an exploratory tool for
             understanding the mathematics of wormhole spacetimes. The geometry is mathematically
-            consistent; the engineering it implies is impossible with known physics. Where that
-            matters, this page says so — out loud.
+            consistent; the engineering it implies is impossible with known physics.
         </div>
 
-        <h2>What this is (and what it is not)</h2>
+        <p class="lede" style="max-width:62ch; margin:1.5rem 0 0;">
+            <strong>Picture the shortcut:</strong> a wormhole is a hypothetical shortcut between two
+            far-apart places in space — a tunnel through the universe. This page doesn't draw a
+            sci-fi picture; it runs the real equations to ask whether one could actually exist. The
+            verdict: the math is self-consistent. You can describe a stable tunnel on paper. But
+            propping it open needs a kind of &ldquo;exotic matter&rdquo; with negative energy that,
+            as far as anyone knows, can't be made. For a metre-wide throat the shortfall is about
+            46 orders of magnitude.
+        </p>
+
+        <h2>A geometry playground with hard limits</h2>
         <div class="two-col">
             <div class="panel is">
-                <h3>What this is</h3>
+                <h3>Inside the simulator</h3>
                 <ul>
-                    <li>A correct implementation of the Morris–Thorne / Ellis metric</li>
+                    <li>An implementation of the Morris–Thorne / Ellis metric that self-tests against the flat-space and photon-orbit limits on load</li>
                     <li>A geodesic solver that sends particles through the throat</li>
                     <li>A curved-space wave equation you can watch in real time</li>
-                    <li>An honest map of where the physics breaks</li>
+                    <li>A map of where the physics breaks</li>
                 </ul>
             </div>
             <div class="panel isnot">
-                <h3>What this is not</h3>
+                <h3>Outside the claim</h3>
                 <ul>
                     <li>A claim that wormholes can be built</li>
                     <li>A source of exotic matter or negative energy</li>
@@ -187,8 +266,8 @@
                 </tr>
                 <tr>
                     <td>Exotic-matter budget</td>
-                    <td class="v no">❌ 60-order gap</td>
-                    <td>A 1 m throat needs ~10⁴³ kg/m³ of negative energy density. The Casimir effect offers ~10⁻⁴ J/m³.</td>
+                    <td class="v no">❌ 46-order gap</td>
+                    <td>A 1 m throat needs ~5×10²⁵ kg/m³ of negative energy density (≈5×10⁴² J/m³). The Casimir effect offers ~4×10⁻⁴ J/m³.</td>
                 </tr>
             </tbody>
         </table>
@@ -201,11 +280,11 @@
 
         <h2>A symmetry worth keeping</h2>
         <div class="callout">
-            In the sibling <a href="../kozyrev-mirror/">Kozyrev Mirror</a> experiment, a chiral
+            In the sibling Kozyrev Mirror experiment &mdash; now shelved, because the effect reproduced but the explanation turned out to be wrong &mdash; a chiral
             spiral boundary <strong>generates</strong> angular momentum from zero. Here, a wormhole
             throat <strong>filters</strong> angular momentum, blocking high-m modes. One creates,
             one selects — and both are <strong>purely geometric</strong>, needing no material
-            properties at all. That's the prettiest thing in this little suite.
+            properties at all.
         </div>
 
         <h2>From the runs</h2>
@@ -225,10 +304,14 @@
         </div>
 
         <footer>
-            Part of <a href="https://www.brokenbranch.dev/coherence-lab/">Coherence Lab</a> ·
-            Broken Branch. Built with human curiosity and Claude.<br>
+            Part of <a href="https://www.brokenbranch.dev/labs/">the Lab</a> ·
+            Broken Branch. Built by one human and a cluster of AI agents.<br>
             MIT licensed · exploratory tooling · nothing here is peer-reviewed.
         </footer>
-    </div>
+    </main>
+    <script src="js/wormhole-landing.js"></script>
+    <!-- Vercel Web Analytics -->
+    <script src="/js/va-shim.js"></script>
+    <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
