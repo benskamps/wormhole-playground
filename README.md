@@ -86,12 +86,14 @@ unavailable, and stays ≥30 fps on a 4K window via a dynamic-resolution governo
 physics is self-consistent, but the engineering is impossible with anything we know how to
 build. The exotic-matter requirement is the fundamental barrier — not an engineering detail.
 
-## A nice connection
+## A sibling result, corrected (2026-09-29)
 
-From the sibling Kozyrev Mirror experiment (not published): a chiral spiral boundary
-*generates* angular momentum from zero. Here, a wormhole throat *filters* angular momentum,
-blocking high-m modes. One creates, one selects — and both effects are **purely geometric**,
-needing no material properties. That symmetry is the prettiest thing in this little suite.
+This README used to pair the throat with the sibling Kozyrev Mirror experiment, where a spiral
+boundary appeared to *generate* angular momentum from zero. That number was a numerical artifact
+(an explicit time step past its stability limit). Re-tested with a real wave solver, a spiral
+mirror adds a twist to waves only when energy escapes, and nothing in equilibrium; see
+[the Honest Spiral](https://www.brokenbranch.dev/labs/as-seen-on-tv/honest-spiral/). The throat
+*filtering* high-m modes here is a separate result and does not rest on that one.
 
 ## Scripts
 
