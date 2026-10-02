@@ -24,6 +24,9 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
 
+# np.trapz was removed in NumPy 2.0 (renamed np.trapezoid in 1.25).
+_trapezoid = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+
 
 class WormholeWaveSimulator:
     """
@@ -140,12 +143,12 @@ class WormholeWaveSimulator:
         l = result['l']
 
         # Initial was in Universe A (l > 0)
-        initial_in_A = np.trapz(initial[l > 0], l[l > 0])
-        initial_in_B = np.trapz(initial[l < 0], l[l < 0])
+        initial_in_A = _trapezoid(initial[l > 0], l[l > 0])
+        initial_in_B = _trapezoid(initial[l < 0], l[l < 0])
 
         # Final distribution
-        final_in_A = np.trapz(final[l > 0], l[l > 0])
-        final_in_B = np.trapz(final[l < 0], l[l < 0])
+        final_in_A = _trapezoid(final[l > 0], l[l > 0])
+        final_in_B = _trapezoid(final[l < 0], l[l < 0])
 
         total_initial = initial_in_A + initial_in_B
         total_final = final_in_A + final_in_B
