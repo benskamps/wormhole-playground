@@ -169,7 +169,11 @@
       return Math.acos(x);
     }
     var phiFlat = flatArc(b, rCam) + flatArc(b, rExit);
-    var deflection = phi - phiFlat;
+    // That flat chord only exists for a ray that comes back out into the same universe. A ray that
+    // crosses into universe B never passes through an "origin" to subtract a chord around, so its
+    // deflection is its total angular sweep Δφ (convention: 0 for a radial ray, b = 0, which is not
+    // bent at all). Subtracting the chord there reported −180° for the straightest ray there is.
+    var deflection = (universe === 'B') ? phi : phi - phiFlat;
 
     var winding = Math.floor(Math.abs(phi) / TWO_PI);
 
@@ -489,13 +493,15 @@
   // RK4 derivative of the doughnut's timelike geodesic state (l, p, phiTL).
   // Φ=0 Ellis ⇒ conserved E and L; default send L=0 (clean radial crossing).
   //   dl/dτ     =  p
-  //   dp/dτ     = -(L*L) * l / (l*l + r0*r0)^2     (angular barrier)
+  //   dp/dτ     = +(L*L) * l / (l*l + r0*r0)^2     (angular barrier: pushes outward)
+  //   From the constraint p² = E² − 1 − L²/r², d/dτ gives p' = +L² l / r⁴, the same sign as
+  //   the null case. (It read −L² l / r⁴, which pulled bodies into the throat.)
   //   dphiTL/dτ =  L / (l*l + r0*r0)
   function timelikeDeriv(l, p, L, r0) {
     var rr = l * l + r0 * r0;
     return [
       p,
-      -(L * L) * l / (rr * rr),
+      (L * L) * l / (rr * rr),
       L / rr
     ];
   }

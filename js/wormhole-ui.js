@@ -681,7 +681,8 @@
           var sub = 3;                                  // sub-step for integration stability
           var dTau = dTauTotal / sub;
           for (var i = 0; i < sub; i++) {
-            s = P.doughnutStepTimelike(s, state.r0, dTau, { E: 1, L: 0 });
+            // With L = 0 the constraint p² = E² − 1 fixes E = √(1 + p²); E = 1 would mean p = 0.
+            s = P.doughnutStepTimelike(s, state.r0, dTau, { E: Math.sqrt(1 + s.p * s.p), L: 0 });
           }
           d.l = s.l; d.p = s.p; d.tau = s.tau; d.phiTL = s.phiTL;
         } else {
