@@ -65,7 +65,7 @@
     if (document.getElementById(STYLE_ID)) return;
     var css = '' +
       '.wh-grp{margin-bottom:18px}' +
-      '.wh-grp>h3{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:#6a6a8a;' +
+      '.wh-grp>h3{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:#80809c;' +
         'margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid #2a2a4a}' +
       '.wh-row{margin-bottom:11px}' +
       '.wh-row>label{display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:4px;color:#aaaacc}' +
@@ -76,6 +76,7 @@
         'background:#4facfe;border-radius:50%;cursor:pointer;box-shadow:0 0 8px #4facfe66}' +
       '.wh-row input[type=range]::-moz-range-thumb{width:15px;height:15px;background:#4facfe;border:none;' +
         'border-radius:50%;cursor:pointer}' +
+      '.wh-row input[type=range]:focus-visible{outline:2px solid #4facfe;outline-offset:3px}' +
       '.wh-chk{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.82rem;color:#aaaacc;cursor:pointer}' +
       '.wh-chk input{width:16px;height:16px;accent-color:#4facfe;cursor:pointer}' +
       '.wh-btn{width:100%;padding:9px;background:linear-gradient(90deg,#4facfe33,#00f2fe33);' +
@@ -89,7 +90,7 @@
         'border-radius:4px;cursor:pointer;font-size:.72rem;font-family:inherit;transition:all .15s}' +
       '.wh-seg button:hover{border-color:#4facfe;color:#4facfe}' +
       '.wh-seg button.wh-on{background:#4facfe22;border-color:#4facfe;color:#4facfe}' +
-      '.wh-note{font-size:.68rem;color:#6a6a8a;line-height:1.4;margin-top:6px}' +
+      '.wh-note{font-size:.68rem;color:#80809c;line-height:1.4;margin-top:6px}' +
       /* HUD overlay */
       '.wh-hud{position:absolute;left:14px;bottom:14px;z-index:30;font-family:monospace;font-size:.74rem;' +
         'line-height:1.5;color:#cfe6ff;background:rgba(8,8,20,.72);border:1px solid #243049;' +
@@ -119,7 +120,7 @@
       '.wh-inspect .wh-ins-uA{color:#7ec8ff}' +
       '.wh-inspect .wh-ins-uB{color:#ffb37a}' +
       '.wh-inspect .wh-ins-ring{color:#ffe08a}' +
-      '.wh-inspect .wh-ins-empty{color:#6a6a8a;font-style:italic}' +
+      '.wh-inspect .wh-ins-empty{color:#80809c;font-style:italic}' +
       /* fallback banner */
       '.wh-fallback{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;' +
         'font-family:system-ui,sans-serif;max-width:520px;text-align:center;color:#dfe8ff;' +

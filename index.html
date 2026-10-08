@@ -183,6 +183,8 @@
 
         footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); color: var(--text-muted); font-family: var(--font-mono); font-size: 0.8rem; }
         footer a { color: var(--text-secondary); }
+        /* Links inside running text carry an underline, not just a colour (WCAG 1.4.1). */
+        .callout a, footer a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
     </style>
 </head>
 <body>
