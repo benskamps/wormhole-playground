@@ -168,12 +168,19 @@
       if (x >= 1) return 0;            // grazing/inside — no arc contribution
       return Math.acos(x);
     }
-    var phiFlat = flatArc(b, rCam) + flatArc(b, rExit);
-    // That flat chord only exists for a ray that comes back out into the same universe. A ray that
-    // crosses into universe B never passes through an "origin" to subtract a chord around, so its
+    // That flat chord only exists for a ray that stays in the universe it started in. A ray that
+    // crosses the throat never passes through an "origin" to subtract a chord around, so its
     // deflection is its total angular sweep Δφ (convention: 0 for a radial ray, b = 0, which is not
     // bent at all). Subtracting the chord there reported −180° for the straightest ray there is.
-    var deflection = (universe === 'B') ? phi : phi - phiFlat;
+    // "Crossed" is judged against the camera's own side, so this holds with the camera at l < 0 too
+    // (the traverse flythrough ends there). A ray fired outward never reaches perihelion, so its
+    // flat sweep is the difference of the two arcs, not their sum. Arcs use |b|, signed like Δφ.
+    var crossed = (l0 >= 0) ? (l < 0) : (l > 0);
+    var outward = !crossed && (Math.cos(theta) * (l0 >= 0 ? 1 : -1) > 0);
+    var bAbs = Math.abs(b), bSign = (b < 0) ? -1 : 1;
+    var phiFlat = bSign * (outward ? (flatArc(bAbs, rExit) - flatArc(bAbs, rCam))
+                                   : (flatArc(bAbs, rCam) + flatArc(bAbs, rExit)));
+    var deflection = crossed ? phi : phi - phiFlat;
 
     var winding = Math.floor(Math.abs(phi) / TWO_PI);
 
