@@ -33,36 +33,78 @@
 (function () {
   'use strict';
 
-  // --- brand palette (continuity with the dark #0a0a12 / #4facfe aesthetic) ---
+  // --- house palette (brokenbranch.dev: warm instrument panel, ember/brass) ---
+  // All text colours hold >= 4.5:1 against COL.bg (#0e0b09).
   var COL = {
-    bg:        '#0a0a12',
-    panel:     '#0a0a12',
-    grid:      '#22223a',
-    gridFaint: '#191926',
-    axis:      '#3a3a5a',
-    profile:   '#4facfe',   // r(l) profile + accent
-    iso:       '#7ee0c0',   // isometric embedding curve (proper distance)
-    exotic:    'rgba(176, 92, 255, 0.30)', // |rho| violet fog (matches GL fog)
-    exoticEdge:'rgba(176, 92, 255, 0.65)',
-    veff:      '#aa66ff',   // effective potential
-    veffFill:  'rgba(170, 102, 255, 0.16)',
-    throat:    '#ff4466',
-    cam:       '#ffce56',
-    wave:      '#44ff88',   // |psi|^2
-    ink:       '#e0e0e0',
-    inkMuted:  '#8888aa',
-    inkFaint:  '#80809c',
-    rayA:      '#4facfe',   // universe-A sheet (l>0)  cool
-    rayB:      '#ff9a55',   // universe-B sheet (l<0)  warm
-    ring:      '#ffd27f',   // photon-ring (winding) glow
-    danger:    '#ff5a6a',   // negative-energy ledger highlight
-    rungCol:   '#cfd0e8',
-    rungLine:  '#444a66'
+    bg:        '#0e0b09',   // recessed well (matches playground --well)
+    panel:     '#0e0b09',
+    grid:      '#3a2f26',
+    gridFaint: '#211a14',
+    axis:      '#4a3b28',
+    profile:   '#c9a86a',   // r(l) profile — brass
+    profileDim:'rgba(201,168,106,0.42)',
+    iso:       '#8fc4a8',   // isometric embedding curve (proper distance) — sage
+    exotic:    'rgba(214, 84, 110, 0.24)', // |rho|<0 exotic fog — rose
+    exoticEdge:'rgba(214, 84, 110, 0.6)',
+    veff:      '#e8833a',   // effective potential — ember
+    veffFill:  'rgba(232, 131, 58, 0.16)',
+    veffText:  '#f09048',
+    throat:    '#f0687a',   // throat marker — rose-red
+    cam:       '#f2cf6b',   // camera tick / counters — gold
+    wave:      '#7fd3bd',   // |psi|^2 — teal-sage
+    ink:       '#ece1cc',
+    inkMuted:  '#b8a98c',
+    inkFaint:  '#a0926f',
+    rayA:      '#a9c1d6',   // universe-A sheet (l>0)  cool slate
+    rayB:      '#f09048',   // universe-B sheet (l<0)  warm ember
+    ring:      '#f2d27f',   // photon-ring (winding) glow
+    danger:    '#f2707a',   // negative-energy ledger highlight
+    dangerSoft:'#f4a3a5',
+    dangerWash:'rgba(242,112,122,0.10)',
+    card:      'rgba(18,14,11,0.9)',
+    rungCol:   '#ece1cc',
+    rungLine:  '#4a3b28'
   };
 
-  var MONO = '11px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-  var MONO_SM = '10px ui-monospace, "SF Mono", Menlo, Consolas, monospace';
-  var SANS = '11px system-ui, "Segoe UI", sans-serif';
+  var FONT_STACK = '"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace';
+  var MONO = '11px ' + FONT_STACK;
+  var MONO_SM = '10px ' + FONT_STACK;
+  var MONO_XS = '9px ' + FONT_STACK;
+  var SANS = '500 10px ' + FONT_STACK;   // panel eyebrow titles (mono, tracked)
+
+  // Panel eyebrow: tracked uppercase mono, ember dot. Visual only.
+  function eyebrow(ctx, text, x, y) {
+    ctx.save();
+    ctx.font = SANS;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '1.5px';
+    ctx.fillStyle = COL.inkFaint;
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  // Shrink a mono font until text fits maxW (floor 8px). Returns font string.
+  function fitFont(ctx, text, maxW, px, weight) {
+    var size = px;
+    var pre = weight ? weight + ' ' : '';
+    ctx.font = pre + size + 'px ' + FONT_STACK;
+    while (size > 8 && ctx.measureText(text).width > maxW) {
+      size -= 0.5;
+      ctx.font = pre + size + 'px ' + FONT_STACK;
+    }
+    return ctx.font;
+  }
+
+  // Paint the panel ground behind a left-aligned label so grid lines and tick
+  // labels never collide with it ("knockout"). Visual only.
+  function knockout(ctx, text, x, y, size) {
+    var w = ctx.measureText(text).width;
+    var fill = ctx.fillStyle;
+    ctx.fillStyle = COL.bg;
+    ctx.fillRect(x - 2, y - size + 1, w + 4, size + 2);
+    ctx.fillStyle = fill;
+  }
 
   // ---------------------------------------------------------------------------
   // small helpers
@@ -92,7 +134,7 @@
     var s = baseStr + '×10';
     ctx.fillText(s, x, y);
     var w = ctx.measureText(s).width;
-    ctx.font = '8px ui-monospace, monospace';
+    ctx.font = '8px ' + FONT_STACK;
     ctx.fillText(String(exp), x + w + 1, y - 5);
     var w2 = ctx.measureText(String(exp)).width;
     ctx.font = MONO;
@@ -115,8 +157,14 @@
 
     s.resize = function () {
       if (!s.canvas || !s.ctx) return;
-      var parent = s.canvas.parentElement || s.canvas;
-      var rect = parent.getBoundingClientRect();
+      // Size the bitmap to the canvas' own CSS box (it shares its panel with a
+      // title row, so the parent rect would stretch the drawing); fall back to
+      // the parent while the canvas has no layout box yet.
+      var rect = s.canvas.getBoundingClientRect();
+      if (rect.width < 2 || rect.height < 2) {
+        var parent = s.canvas.parentElement || s.canvas;
+        rect = parent.getBoundingClientRect();
+      }
       var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
       // Guard against zero-size parents (hidden panels) — keep a 1px floor.
       var w = Math.max(1, Math.round(rect.width));
@@ -171,7 +219,7 @@
       csSurf.clear(COL.bg);
 
       // ---- layout ----
-      var padL = 34, padR = 12, padT = 26, padB = 22;
+      var padL = 28, padR = 12, padT = 28, padB = 24;
       var plotW = Math.max(1, W - padL - padR);
       var plotH = Math.max(1, H - padT - padB);
       var midY = padT + plotH * 0.5;           // l-axis (r=0 centerline)
@@ -254,7 +302,7 @@
       ctx.strokeStyle = COL.profile;
       ctx.lineWidth = 2;
       strokeProfile(rToYup);
-      ctx.strokeStyle = 'rgba(79,172,254,0.45)';
+      ctx.strokeStyle = COL.profileDim;
       ctx.lineWidth = 1.5;
       strokeProfile(rToYdn);
 
@@ -313,7 +361,9 @@
       ctx.font = MONO_SM;
       ctx.fillStyle = COL.throat;
       ctx.textAlign = 'left';
-      ctx.fillText('r0=' + r0.toFixed(2), lToX(0) + 5, rToYup(r0) - 4);
+      var r0Lab = 'r0=' + r0.toFixed(2);
+      knockout(ctx, r0Lab, lToX(0) + 6, rToYup(r0) - 4, 10);
+      ctx.fillText(r0Lab, lToX(0) + 6, rToYup(r0) - 4);
 
       // ---- camera tick at camL ----
       var camX = lToX(clamp(camL, -L_VIEW, L_VIEW));
@@ -334,16 +384,15 @@
       ctx.fillText('cam', camX, midY - 18);
 
       // ---- titles / axis labels ----
-      ctx.font = SANS;
-      ctx.textAlign = 'left';
-      ctx.fillStyle = COL.inkMuted;
-      ctx.fillText('CROSS-SECTION', padL, 14);
+      eyebrow(ctx, 'CROSS-SECTION', 8, 15);
       ctx.fillStyle = COL.iso;
-      ctx.font = MONO_SM;
-      ctx.fillText('z(l)=r0·asinh(l/r0) — isometric (proper distance)', padL, padT + plotH + 14);
+      ctx.textAlign = 'left';
+      var isoCap = 'z(l)=r0·asinh(l/r0) — isometric (proper distance)';
+      fitFont(ctx, isoCap, W - 16, 10);
+      ctx.fillText(isoCap, 8, padT + plotH + 15);
 
       // universe sheet labels
-      ctx.font = SANS;
+      ctx.font = MONO_SM;
       ctx.fillStyle = COL.rayB;
       ctx.textAlign = 'center';
       ctx.fillText('Universe B  (l<0)', padL + plotW * 0.22, padT + 11);
@@ -352,9 +401,9 @@
 
       // V_eff legend
       ctx.font = MONO_SM;
-      ctx.fillStyle = COL.veff;
+      ctx.fillStyle = COL.veffText;
       ctx.textAlign = 'right';
-      ctx.fillText('V_eff (m=' + m + ')', padL + plotW, padT + 11);
+      ctx.fillText('V_eff (m=' + m + ')', W - 8, 15);
 
       // ===================================================================
       // INSPECTOR OVERLAY — traced ray from WormholePhysics.traceRay
@@ -398,13 +447,13 @@
       // (2) top-down winding inset: x=r·cosφ, y=r·sinφ, hue by sign(l).
       var insetSz = Math.min(g.plotW * 0.34, g.plotH * 0.5, 120);
       var insX = g.padL + g.plotW - insetSz - 6;
-      var insY = g.padT + 6;
+      var insY = g.padT + g.plotH - insetSz - 2;   // bottom-right: clear of the card
       var cx = insX + insetSz / 2;
       var cy = insY + insetSz / 2;
 
       // inset frame
       ctx.save();
-      ctx.fillStyle = 'rgba(8,8,18,0.82)';
+      ctx.fillStyle = COL.card;
       ctx.strokeStyle = COL.rungLine;
       ctx.lineWidth = 1;
       roundRect(ctx, insX, insY, insetSz, insetSz, 4);
@@ -456,7 +505,7 @@
       ctx.arc(cx + r0p * Math.cos(phi0) * iScale, cy + r0p * Math.sin(phi0) * iScale, 2.5, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.font = '9px ui-monospace, monospace';
+      ctx.font = MONO_XS;
       ctx.fillStyle = COL.inkMuted;
       ctx.textAlign = 'center';
       ctx.fillText('traced ray (top-down)', cx, insY + insetSz - 5);
@@ -490,7 +539,7 @@
       var cardH = lines.length * 13 + 8;
       var cardX = g.padL + 4;
       var cardY = g.padT + 4;
-      ctx.fillStyle = 'rgba(8,8,18,0.85)';
+      ctx.fillStyle = COL.card;
       ctx.strokeStyle = uniCol;
       ctx.lineWidth = 1;
       roundRect(ctx, cardX, cardY, cardW, cardH, 4);
@@ -525,7 +574,7 @@
       r0 = isFiniteNum(r0) ? r0 : 1.0;
       m = isFiniteNum(m) ? Math.round(m) : 0;
 
-      var padL = 30, padR = 12, padT = 24, padB = 26;
+      var padL = 14, padR = 12, padT = 52, padB = 38;
       var plotW = Math.max(1, W - padL - padR);
       var plotH = Math.max(1, H - padT - padB);
       var baseY = padT + plotH;             // y for |psi|^2 = 0 and V = 0
@@ -630,28 +679,42 @@
       var readout = 'peak T=' + (T * 100).toFixed(0) + '%  R=' + (R * 100).toFixed(0) +
                     '%  (T+R=' + sum.toFixed(2) + ')  m=' + m;
 
-      ctx.font = SANS;
-      ctx.fillStyle = COL.inkMuted;
-      ctx.textAlign = 'left';
-      ctx.fillText('m-MODE WAVE', padL, 14);
+      eyebrow(ctx, 'm-MODE WAVE', 8, 15);
 
-      ctx.font = MONO;
+      // readout on its own row so it never collides with the title
       ctx.fillStyle = COL.wave;
-      ctx.textAlign = 'right';
-      ctx.fillText(readout, padL + plotW, 14);
+      ctx.textAlign = 'left';
+      fitFont(ctx, readout, W - 16, 11);
+      ctx.fillText(readout, 8, 31);
 
-      // axis labels + honesty caption
+      // series legend (swatch + label)
       ctx.font = MONO_SM;
       ctx.fillStyle = COL.wave;
-      ctx.textAlign = 'left';
-      ctx.fillText('|ψ|²', padL + 2, padT + 11);
+      ctx.fillRect(8, 41, 10, 2);
+      ctx.fillText('|ψ|²', 22, 45);
       ctx.fillStyle = COL.veff;
-      ctx.fillText('V_eff = m(m+1)/r² + r0²/r⁴', padL + 38, padT + 11);
-      ctx.fillStyle = COL.inkFaint;
+      ctx.fillRect(58, 41, 10, 2);
+      ctx.fillStyle = COL.veffText;
+      var vLab = 'V_eff = m(m+1)/r² + r0²/r⁴';
+      fitFont(ctx, vLab, W - 80, 10);
+      ctx.fillText(vLab, 72, 45);
+      ctx.font = MONO_XS;
+      ctx.fillStyle = COL.throat;
       ctx.textAlign = 'center';
-      ctx.fillText('throat', throatX, baseY + 12);
-      ctx.fillText('m=0 passes at high freq; the throat curvature term gives even m=0 a small barrier',
-                   padL + plotW * 0.5, baseY + 22);
+      ctx.fillText('throat', throatX, baseY + 11);
+      // honesty caption, wrapped onto two lines on narrow panels
+      ctx.fillStyle = COL.inkFaint;
+      var cap1 = 'm=0 passes at high freq;';
+      var cap2 = 'the throat curvature term gives even m=0 a small barrier';
+      var capFull = cap1 + ' ' + cap2;
+      ctx.font = MONO_XS;
+      if (ctx.measureText(capFull).width <= W - 16) {
+        ctx.fillText(capFull, W * 0.5, baseY + 25);
+      } else {
+        fitFont(ctx, cap2, W - 16, 9);
+        ctx.fillText(cap1, W * 0.5, baseY + 23);
+        ctx.fillText(cap2, W * 0.5, baseY + 33);
+      }
     }
 
     // ===================================================================
@@ -659,10 +722,10 @@
     // ===================================================================
     // Every rung carries its assumption in the label. No unlabeled magic numbers.
     var LEDGER_RUNGS = [
-      { v: 4.3e-4, label: 'Casimir effect',     assume: '1 µm plate gap',        col: '#7ee0c0' },
-      { v: 1e10,   label: 'TNT detonation',     assume: 'chemical energy density', col: '#ffce56' },
-      { v: 9e19,   label: 'Water (mass-energy)', assume: 'ρc² of liquid water',   col: '#4facfe' },
-      { v: 5e34,   label: 'Neutron-star core',  assume: 'nuclear saturation',     col: '#c08bff' }
+      { v: 4.3e-4, label: 'Casimir effect',     assume: '1 µm plate gap',        col: '#8fc4a8' },
+      { v: 1e10,   label: 'TNT detonation',     assume: 'chemical energy density', col: '#e8933f' },
+      { v: 9e19,   label: 'Water (mass-energy)', assume: 'ρc² of liquid water',   col: '#a9c1d6' },
+      { v: 5e34,   label: 'Neutron-star core',  assume: 'nuclear saturation',     col: '#c9a86a' }
     ];
 
     function renderLedger(budget, r0_m) {
@@ -677,7 +740,7 @@
       var jupiters = isFiniteNum(budget.jupiters) ? budget.jupiters : 0;
       var gapOrders = isFiniteNum(budget.gapOrders) ? budget.gapOrders : 0;
 
-      var padL = 12, padR = 12, padT = 22, padB = 30;
+      var padL = 8, padR = 10, padT = 30, padB = 32;
       var axisX = padL + 6;
       var plotTop = padT;
       var plotBot = H - padB;
@@ -708,9 +771,9 @@
       ctx.stroke();
 
       // decade tick marks
-      ctx.font = '8px ui-monospace, monospace';
+      ctx.font = '8px ' + FONT_STACK;
       ctx.fillStyle = COL.inkFaint;
-      ctx.textAlign = 'left';
+      ctx.textAlign = 'right';
       var step = expSpan > 40 ? 10 : (expSpan > 16 ? 5 : 2);
       for (var d = Math.ceil(loExp / step) * step; d <= hiExp; d += step) {
         var ty = expToY(d);
@@ -718,8 +781,10 @@
         ctx.beginPath();
         ctx.moveTo(axisX, ty); ctx.lineTo(W - padR, ty);
         ctx.stroke();
+        // skip a decade label that would sit in the throat-requirement block
+        if (rhoJ > 0 && Math.abs(ty - expToY(budgetExp)) < 16) continue;
         ctx.fillStyle = COL.inkFaint;
-        ctx.fillText('10^' + d, axisX + 2, ty - 1);
+        ctx.fillText('10^' + d, W - padR, ty - 2);
       }
 
       // ---- named rungs (each with assumption) ----
@@ -738,20 +803,30 @@
         ctx.fill();
         // label (name + value + assumption — labeled magic numbers)
         var sc = sci(rung.v);
+        var rLab = rung.label + '  ' + sc.str + ' J/m³';
+        var rAs = '(' + rung.assume + ')';
+        // a rung sitting just under the throat-requirement block hangs its
+        // label below its line so the two never stack on top of each other
+        var byTop = rhoJ > 0 ? expToY(budgetExp) : -1e9;
+        var hang = (ry > byTop) && (ry - byTop < 36);
+        var yLab = hang ? ry + 11 : ry - 3;
+        var yAs = hang ? ry + 21 : ry + 10;
         ctx.font = MONO_SM;
-        ctx.fillStyle = rung.col;
         ctx.textAlign = 'left';
-        ctx.fillText(rung.label + '  ' + sc.str + ' J/m³', axisX + 8, ry - 2);
-        ctx.font = '8px ui-monospace, monospace';
+        ctx.fillStyle = rung.col;
+        knockout(ctx, rLab, axisX + 8, yLab, 10);
+        ctx.fillText(rLab, axisX + 8, yLab);
+        ctx.font = '8px ' + FONT_STACK;
         ctx.fillStyle = COL.inkFaint;
-        ctx.fillText('(' + rung.assume + ')', axisX + 8, ry + 8);
+        knockout(ctx, rAs, axisX + 8, yAs, 8);
+        ctx.fillText(rAs, axisX + 8, yAs);
       }
 
       // ---- the computed exotic-matter requirement: red, NEGATIVE ----
       if (rhoJ > 0) {
         var by = expToY(budgetExp);
         // glow band
-        ctx.fillStyle = 'rgba(255,90,106,0.12)';
+        ctx.fillStyle = COL.dangerWash;
         ctx.fillRect(axisX, Math.min(by, plotTop), W - padR - axisX, Math.abs(plotTop - by));
         ctx.strokeStyle = COL.danger;
         ctx.lineWidth = 2.5;
@@ -763,36 +838,39 @@
         ctx.arc(axisX, by, 3.5, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.font = 'bold ' + MONO_SM;
         ctx.fillStyle = COL.danger;
         ctx.textAlign = 'left';
         var scB = sci(rhoJ);
-        ctx.fillText('THROAT REQUIREMENT  −' + scB.str + ' J/m³  (NEGATIVE)', axisX + 8, by - 4);
+        var bLab = 'THROAT REQUIREMENT  −' + scB.str + ' J/m³  (NEGATIVE)';
+        fitFont(ctx, bLab, W - padR - axisX - 10, 10, 'bold');
+        knockout(ctx, bLab, axisX + 8, by - 5, 10);
+        ctx.fillText(bLab, axisX + 8, by - 5);
         // kg/m³ with explicit c² conversion
-        ctx.font = '8px ui-monospace, monospace';
-        ctx.fillStyle = '#ff97a3';
-        var scKg = sci(rhoKg);
-        ctx.fillText('= −' + scKg.str + ' kg/m³   (÷ c² = ÷ 8.988×10¹⁶)', axisX + 8, by + 8);
+        var kLab = '= −' + sci(rhoKg).str + ' kg/m³   (÷ c² = ÷ 8.988×10¹⁶)';
+        fitFont(ctx, kLab, W - padR - axisX - 10, 8.5);
+        ctx.fillStyle = COL.dangerSoft;
+        knockout(ctx, kLab, axisX + 8, by + 11, 9);
+        ctx.fillText(kLab, axisX + 8, by + 11);
       }
 
       // ---- header + footer summary lines ----
-      ctx.font = SANS;
-      ctx.fillStyle = COL.inkMuted;
-      ctx.textAlign = 'left';
-      ctx.fillText('EXOTIC-MATTER LEDGER', padL, 13);
+      eyebrow(ctx, 'EXOTIC-MATTER LEDGER', 8, 15);
 
       // gap-orders + Jupiter counter (computed live — no hardcoded "60")
-      ctx.font = MONO_SM;
       ctx.textAlign = 'left';
-      var fy = H - padB + 11;
+      var fy = H - padB + 14;
+      ctx.fillStyle = COL.gridFaint;
+      ctx.fillRect(padL, fy - 11, W - padL - padR, 1);
+      var gLab = '≈ ' + gapOrders.toFixed(1) + ' orders of magnitude above the Casimir effect';
+      fitFont(ctx, gLab, W - padL - padR, 10);
       ctx.fillStyle = COL.danger;
-      ctx.fillText('≈ ' + gapOrders.toFixed(1) + ' orders of magnitude above the Casimir effect',
-                   padL, fy);
+      ctx.fillText(gLab, padL, fy);
       ctx.fillStyle = COL.cam;
       var jStr = jupiters >= 0.01 ? jupiters.toFixed(2) : sci(jupiters).str;
-      ctx.fillText('|E| ≈ ' + jStr + ' M_Jup per this throat' +
-                   (isFiniteNum(r0_m) ? '   (r0 = ' + fmtMeters(r0_m) + ')' : ''),
-                   padL, fy + 11);
+      var jLab = '|E| ≈ ' + jStr + ' M_Jup per this throat' +
+                 (isFiniteNum(r0_m) ? '   (r0 = ' + fmtMeters(r0_m) + ')' : '');
+      fitFont(ctx, jLab, W - padL - padR, 10);
+      ctx.fillText(jLab, padL, fy + 12);
     }
 
     // ---------------------------------------------------------------------

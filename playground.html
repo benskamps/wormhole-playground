@@ -52,136 +52,183 @@
   ============================================================================
 -->
 <style>
+  /* House fonts (same files the site serves; falls back cleanly on file://) */
+  @font-face{font-family:'Fraunces';font-style:italic;font-weight:300 900;font-display:swap;src:url('/fonts/fraunces-italic-latin.woff2') format('woff2')}
+  @font-face{font-family:'Fraunces';font-style:normal;font-weight:300 900;font-display:swap;src:url('/fonts/fraunces-normal-latin.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:300 700;font-display:swap;src:url('/fonts/jetbrainsmono-normal-latin.woff2') format('woff2')}
+  @font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:300 700;font-display:swap;src:url('/fonts/jetbrainsmono-normal-latinext.woff2') format('woff2');unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+
   *{margin:0;padding:0;box-sizing:border-box}
+  /* House palette (brokenbranch.dev tokens): a warm instrument bezel around a
+     window into deep space. ember = primary, brass = accent, gold = warn. */
   :root{
-    --bg:#0a0a12; --bg2:#12121e; --panel:#0d0d18;
-    --line:#2a2a4a; --line2:#1c1c30;
-    --accent:#4facfe; --accent2:#00f2fe;
-    --ink:#e0e0e0; --ink-muted:#8888aa; --ink-faint:#80809c;
-    --warm:#ffb37a;
+    --bg:#0e0b08;        /* frame behind everything */
+    --bezel:#15110d;     /* header / footer / sidebar / rail */
+    --panel:#1b1510;     /* raised cards, toggles */
+    --well:#0e0b09;      /* recessed canvas wells (matches panels.js COL.bg) */
+    --line:#3a2f26; --line-hi:#4a3b28; --line-soft:#271f18;
+    --ink:#ece1cc; --ink-2:#b8a98c; --ink-3:#a0926f;
+    --ember:#e8833a; --ember-hi:#f09048; --ember-wash:rgba(232,131,58,.12);
+    --brass:#c9a86a; --gold:#d9a441; --rose:#f0857c;
+    --serif:'Fraunces',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
   }
   html,body{height:100%}
+  :focus-visible{outline:2px solid var(--ember-hi); outline-offset:2px}
   /* skip link: visually hidden until focused, then pinned over the header */
   .skip-link{
     position:absolute; left:-9999px; top:8px; z-index:100;
-    padding:8px 14px; border-radius:5px; background:#16182e;
-    border:1px solid var(--accent); color:var(--accent);
-    font-size:.82rem; text-decoration:none;
+    padding:8px 14px; border-radius:6px; background:var(--panel);
+    border:1px solid var(--ember); color:var(--ember-hi);
+    font-family:var(--mono); font-size:.78rem; text-decoration:none;
   }
-  .skip-link:focus{left:8px; outline:2px solid var(--accent2)}
+  .skip-link:focus{left:8px; outline:2px solid var(--ember-hi)}
   body{
-    font-family:'Segoe UI',system-ui,sans-serif;
+    font-family:var(--serif);
     background:var(--bg); color:var(--ink);
     overflow:hidden; height:100vh;
+    -webkit-font-smoothing:antialiased;
   }
+  ::selection{background:rgba(232,131,58,.32); color:var(--ink)}
   /* minmax(0,1fr): the nowrap equation strip in the footer must scroll, not
      widen the whole app past the viewport */
   #app{display:grid; grid-template-rows:52px 1fr 56px; grid-template-columns:minmax(0,1fr); height:100vh}
 
   /* ---- header ---- */
   header{
-    background:linear-gradient(90deg,#16182e,#101a30);
-    display:flex; align-items:center; justify-content:space-between;
+    background:var(--bezel);
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
     padding:0 18px; border-bottom:1px solid var(--line); z-index:40;
+    box-shadow:inset 0 1px 0 rgba(236,225,204,.035), 0 1px 0 rgba(0,0,0,.55);
   }
-  header .brand{display:flex; align-items:baseline; gap:12px; min-width:0}
+  header .brand{display:flex; align-items:baseline; gap:14px; min-width:0}
   header h1{
-    font-size:1.18rem; font-weight:600; white-space:nowrap;
-    background:linear-gradient(90deg,var(--accent),var(--accent2));
-    -webkit-background-clip:text; background-clip:text;
-    -webkit-text-fill-color:transparent;
+    font-family:var(--serif); font-style:italic; font-weight:400;
+    font-variation-settings:'opsz' 72;
+    font-size:1.38rem; line-height:1; letter-spacing:-.01em; white-space:nowrap;
+    color:var(--ink);
+    text-transform:lowercase;
   }
+  header h1::first-letter{text-transform:uppercase}
   header .sub{
-    font-size:.72rem; color:var(--ink-muted); font-family:ui-monospace,monospace;
+    font-family:var(--mono); font-size:.68rem; letter-spacing:.04em; color:var(--ink-3);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    padding-left:14px; border-left:1px solid var(--line);
   }
-  header .hdr-actions{display:flex; gap:9px; flex:0 0 auto}
+  header .hdr-actions{display:flex; gap:8px; flex:0 0 auto}
   header .hdr-actions button{
-    padding:7px 16px; border-radius:5px; cursor:pointer; font-size:.82rem;
-    font-family:inherit; border:1px solid var(--accent); color:var(--accent);
-    background:linear-gradient(90deg,#4facfe22,#00f2fe22); transition:background .15s;
+    padding:7px 15px; border-radius:6px; cursor:pointer;
+    font-family:var(--mono); font-size:.74rem; letter-spacing:.04em;
+    border:1px solid var(--line); color:var(--ink-2); background:transparent;
+    transition:border-color .15s,color .15s,background .15s;
   }
-  header .hdr-actions button:hover{background:linear-gradient(90deg,#4facfe44,#00f2fe44)}
+  header .hdr-actions button:hover{border-color:var(--line-hi); color:var(--ink); background:rgba(236,225,204,.03)}
+  header .hdr-actions button:disabled{cursor:default; opacity:.6}
+  header .hdr-actions button:disabled:hover{border-color:var(--line); color:var(--ink-2); background:transparent}
   header .hdr-actions button.hot{
-    border-color:#ff8a4c; color:#ffb37a;
-    background:linear-gradient(90deg,#ff8a4c22,#ffd24c22);
+    border-color:var(--ember); color:#1c1510; background:var(--ember); font-weight:600;
+    box-shadow:0 1px 0 rgba(255,255,255,.12) inset, 0 2px 10px rgba(232,131,58,.18);
   }
-  header .hdr-actions button.hot:hover{background:linear-gradient(90deg,#ff8a4c44,#ffd24c44)}
+  header .hdr-actions button.hot:hover{background:var(--ember-hi); border-color:var(--ember-hi); color:#1c1510}
 
   /* ---- main grid ---- */
   main{display:grid; grid-template-columns:264px 1fr 320px; overflow:hidden; min-height:0}
+  main:focus{outline:none}
 
   /* ---- sidebar (controls) ---- */
   #sidebar{
-    background:var(--bg2); padding:15px 14px; overflow-y:auto;
+    background:var(--bezel); padding:16px 15px; overflow-y:auto;
     border-right:1px solid var(--line);
+    box-shadow:inset -1px 0 0 rgba(0,0,0,.5);
+    scrollbar-width:thin; scrollbar-color:var(--line-hi) transparent;
   }
   #sidebar::-webkit-scrollbar{width:8px}
-  #sidebar::-webkit-scrollbar-thumb{background:#2a2a44; border-radius:4px}
+  #sidebar::-webkit-scrollbar-thumb{background:var(--line); border-radius:4px}
 
-  /* ---- hero ---- */
+  /* ---- hero: the window into space, set into the bezel ---- */
   #hero-wrap{position:relative; overflow:hidden; background:#04040a; min-width:0}
+  #hero-wrap::after{
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.7), inset 0 0 70px rgba(10,7,4,.55);
+  }
   #hero{display:block; width:100%; height:100%}
 
   /* ---- inspector rail ---- */
   #rail{
-    background:var(--bg2); border-left:1px solid var(--line);
+    background:var(--bezel); border-left:1px solid var(--line);
+    box-shadow:inset 1px 0 0 rgba(0,0,0,.5);
     display:flex; flex-direction:column; overflow:hidden;
   }
   .rail-panel{
     display:flex; flex-direction:column; flex:1 1 0; min-height:0;
-    border-bottom:1px solid var(--line2); padding:8px 10px 4px;
+    border-bottom:1px solid var(--line-soft); padding:9px 10px 8px;
   }
   .rail-panel:last-child{border-bottom:none}
   .rail-panel > .rail-title{
-    font-size:.66rem; text-transform:uppercase; letter-spacing:1px;
-    color:var(--ink-faint); margin-bottom:5px; flex:0 0 auto;
+    font-family:var(--mono); font-size:.6rem; text-transform:uppercase; letter-spacing:.12em;
+    color:var(--ink-3); margin-bottom:6px; flex:0 0 auto; line-height:1.45;
   }
-  .rail-panel > canvas{flex:1 1 0; width:100%; min-height:0; display:block}
+  .rail-panel > .rail-title::before{
+    content:''; display:inline-block; width:6px; height:6px; margin:0 8px 1px 1px;
+    border-radius:50%; background:var(--ember); box-shadow:0 0 6px rgba(232,131,58,.55);
+    vertical-align:middle;
+  }
+  .rail-panel > canvas{
+    flex:1 1 0; width:100%; min-height:0; display:block;
+    background:var(--well); border:1px solid var(--line-soft); border-radius:5px;
+    box-shadow:inset 0 1px 6px rgba(0,0,0,.6);
+  }
 
   /* ---- footer (metric equations) ---- */
   footer{
-    background:linear-gradient(90deg,#101225,#0c1426);
+    background:var(--bezel);
     border-top:1px solid var(--line); display:flex; align-items:center;
-    gap:22px; padding:0 18px; overflow-x:auto; z-index:40;
+    gap:24px; padding:0 18px; overflow-x:auto; z-index:40;
+    box-shadow:inset 0 1px 0 rgba(236,225,204,.03);
+    scrollbar-width:thin; scrollbar-color:var(--line-hi) transparent;
   }
   footer .eq{
-    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-    font-size:.74rem; color:var(--ink-muted); white-space:nowrap;
+    font-family:var(--mono);
+    font-size:.72rem; color:var(--ink-2); white-space:nowrap;
   }
-  footer .eq b{color:var(--accent)}
-  footer .eq .neg{color:#ff7a8a}
-  footer .brandtag{margin-left:auto; font-size:.68rem; color:var(--ink-faint); white-space:nowrap}
+  footer .eq + .eq{padding-left:12px; border-left:1px solid var(--line); margin-left:-12px}
+  footer .eq b{color:var(--brass); font-weight:600}
+  footer .eq .neg{color:var(--rose)}
+  footer .brandtag{
+    margin-left:auto; padding-left:24px; font-family:var(--serif); font-style:italic;
+    font-size:.8rem; color:var(--ink-3); white-space:nowrap;
+  }
 
   /* collapsible drawers on narrow screens */
   #sidebar-toggle,#rail-toggle{display:none}
+  #sidebar-toggle,#rail-toggle{
+    padding:7px 13px; border-radius:6px; cursor:pointer;
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase;
+    background:rgba(21,17,13,.88); border:1px solid var(--line-hi); color:var(--ink);
+    box-shadow:0 4px 14px rgba(0,0,0,.45); backdrop-filter:blur(4px);
+  }
+  #sidebar-toggle[aria-expanded="true"],#rail-toggle[aria-expanded="true"]{border-color:var(--ember); color:var(--ember-hi)}
 
   @media (max-width:1100px){
     main{grid-template-columns:240px 1fr}
     #rail{
-      position:fixed; right:0; top:52px; bottom:56px; width:320px; z-index:45;
-      transform:translateX(100%); transition:transform .2s; box-shadow:-8px 0 24px rgba(0,0,0,.5);
+      position:fixed; right:0; top:52px; bottom:56px; width:320px; max-width:88vw; z-index:45;
+      transform:translateX(100%); transition:transform .2s; box-shadow:-10px 0 28px rgba(0,0,0,.6);
     }
     #rail.open{transform:translateX(0)}
-    #rail-toggle{
-      display:block; position:fixed; right:14px; top:64px; z-index:46;
-      padding:7px 12px; border-radius:5px; cursor:pointer; font-size:.78rem;
-      background:#16182e; border:1px solid var(--accent); color:var(--accent);
-    }
+    #rail{padding-top:50px}  /* clear the floating Panels / Controls toggles */
+    #rail-toggle{display:block; position:fixed; right:14px; top:64px; z-index:46}
   }
   @media (max-width:720px){
     main{grid-template-columns:1fr}
     #sidebar{
-      position:fixed; left:0; top:52px; bottom:56px; width:264px; z-index:45;
-      transform:translateX(-100%); transition:transform .2s;
+      position:fixed; left:0; top:52px; bottom:56px; width:264px; max-width:88vw; z-index:45;
+      transform:translateX(-100%); transition:transform .2s; box-shadow:10px 0 28px rgba(0,0,0,.6);
     }
     #sidebar.open{transform:translateX(0)}
-    #sidebar-toggle{
-      display:block; position:fixed; left:14px; top:64px; z-index:46;
-      padding:7px 12px; border-radius:5px; cursor:pointer; font-size:.78rem;
-      background:#16182e; border:1px solid var(--accent); color:var(--accent);
-    }
-    header h1{font-size:1rem}
+    #sidebar{padding-top:62px}
+    #sidebar-toggle{display:block; position:fixed; left:14px; top:64px; z-index:46}
+    header h1{font-size:1.15rem}
     header .sub{display:none}
   }
   /* Phones: the title and three buttons need ~560px on one line. Drop the
@@ -190,26 +237,32 @@
   @media (max-width:560px){
     header{gap:10px; padding:0 12px}
     header .brand{flex:1 1 auto}
-    header h1{font-size:.8rem; line-height:1.15; letter-spacing:.02em; white-space:normal}
+    header h1{font-size:1.02rem; line-height:1.08; white-space:normal}
     header .hdr-actions{gap:6px}
-    header .hdr-actions button{padding:7px 11px; font-size:.78rem}
+    header .hdr-actions button{padding:7px 11px; font-size:.72rem}
     #hdr-dough{display:none}
+    footer{gap:18px; padding:0 14px}
+    footer .eq + .eq{padding-left:9px; margin-left:-9px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    #rail,#sidebar{transition:none}
   }
 
   /* boot error (only if a module fails to load) */
   #boot-error{
     position:fixed; inset:0; z-index:99; display:none;
     align-items:center; justify-content:center; padding:30px;
-    background:radial-gradient(circle at 50% 40%,#141426,#08080f);
-    font-family:system-ui,sans-serif; text-align:center;
+    background:radial-gradient(circle at 50% 40%,#1b1510,#0a0806 70%);
+    font-family:var(--serif); text-align:center;
   }
   #boot-error .card{
-    max-width:520px; background:linear-gradient(160deg,#181830,#0d0d18);
-    border:1px solid #3a2c4c; border-radius:12px; padding:28px 32px;
+    max-width:520px; background:var(--bezel);
+    border:1px solid var(--line); border-radius:12px; padding:28px 32px;
+    box-shadow:inset 0 1px 0 rgba(236,225,204,.04), 0 18px 50px rgba(0,0,0,.6);
   }
-  #boot-error h2{color:#ff8a8a; margin-bottom:12px; font-size:1.15rem}
-  #boot-error p{color:#aab6d6; font-size:.88rem; line-height:1.55; margin-bottom:8px}
-  #boot-error code{font-family:ui-monospace,monospace; color:#7ec8ff; font-size:.8rem}
+  #boot-error h2{color:var(--rose); margin-bottom:12px; font-size:1.3rem; font-style:italic; font-weight:400}
+  #boot-error p{color:var(--ink-2); font-size:.92rem; line-height:1.6; margin-bottom:8px}
+  #boot-error code{font-family:var(--mono); color:var(--brass); font-size:.8rem}
 </style>
 </head>
 <body>
