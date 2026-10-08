@@ -51,7 +51,7 @@
     wave:      '#44ff88',   // |psi|^2
     ink:       '#e0e0e0',
     inkMuted:  '#8888aa',
-    inkFaint:  '#6a6a8a',
+    inkFaint:  '#80809c',
     rayA:      '#4facfe',   // universe-A sheet (l>0)  cool
     rayB:      '#ff9a55',   // universe-B sheet (l<0)  warm
     ring:      '#ffd27f',   // photon-ring (winding) glow

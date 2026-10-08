@@ -57,7 +57,7 @@
     --bg:#0a0a12; --bg2:#12121e; --panel:#0d0d18;
     --line:#2a2a4a; --line2:#1c1c30;
     --accent:#4facfe; --accent2:#00f2fe;
-    --ink:#e0e0e0; --ink-muted:#8888aa; --ink-faint:#6a6a8a;
+    --ink:#e0e0e0; --ink-muted:#8888aa; --ink-faint:#80809c;
     --warm:#ffb37a;
   }
   html,body{height:100%}
@@ -92,7 +92,7 @@
     -webkit-text-fill-color:transparent;
   }
   header .sub{
-    font-size:.72rem; color:var(--ink-faint); font-family:ui-monospace,monospace;
+    font-size:.72rem; color:var(--ink-muted); font-family:ui-monospace,monospace;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   header .hdr-actions{display:flex; gap:9px; flex:0 0 auto}
@@ -253,7 +253,7 @@
     </aside>
   </main>
 
-  <footer>
+  <footer tabindex="0" aria-label="Metric equations">
     <span class="eq">ds² = −dt² + dl² + (l²+r0²)dΩ²</span>
     <span class="eq">r(l) = <b>√(l²+r0²)</b></span>
     <span class="eq">ρ = <span class="neg">−r0²/(8π r⁴) &lt; 0</span> (exotic)</span>
