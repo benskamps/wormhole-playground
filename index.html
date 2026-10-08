@@ -158,6 +158,16 @@
         .v.cond { color: var(--warn); }
         .v.no { color: #ef6b6b; }
 
+        /* Phones: three columns do not fit, so each result stacks — name and
+           verdict on one line, the meaning under them. */
+        @media (max-width: 560px) {
+            table, tbody, td { display: block; }
+            thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+            tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+            th, td { padding: 0; border-bottom: 0; }
+            td:last-child { flex-basis: 100%; }
+        }
+
         .callout { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 1.3rem 1.6rem; color: var(--text-secondary); font-size: 0.98rem; margin-top: 1.25rem; }
         .callout strong { color: var(--text); }
 

@@ -74,7 +74,9 @@
     background:var(--bg); color:var(--ink);
     overflow:hidden; height:100vh;
   }
-  #app{display:grid; grid-template-rows:52px 1fr 56px; height:100vh}
+  /* minmax(0,1fr): the nowrap equation strip in the footer must scroll, not
+     widen the whole app past the viewport */
+  #app{display:grid; grid-template-rows:52px 1fr 56px; grid-template-columns:minmax(0,1fr); height:100vh}
 
   /* ---- header ---- */
   header{
@@ -182,6 +184,17 @@
     header h1{font-size:1rem}
     header .sub{display:none}
   }
+  /* Phones: the title and three buttons need ~560px on one line. Drop the
+     header Doughnut button (the Controls drawer has its own) and let the
+     title take two lines, so nothing overlaps or runs off the right edge. */
+  @media (max-width:560px){
+    header{gap:10px; padding:0 12px}
+    header .brand{flex:1 1 auto}
+    header h1{font-size:.8rem; line-height:1.15; letter-spacing:.02em; white-space:normal}
+    header .hdr-actions{gap:6px}
+    header .hdr-actions button{padding:7px 11px; font-size:.78rem}
+    #hdr-dough{display:none}
+  }
 
   /* boot error (only if a module fails to load) */
   #boot-error{
@@ -204,7 +217,7 @@
 <div id="app">
   <header>
     <div class="brand">
-      <h1>WORMHOLE&nbsp;PHYSICS&nbsp;PLAYGROUND</h1>
+      <h1>WORMHOLE&nbsp;PHYSICS PLAYGROUND</h1>
       <span class="sub">Through the Drainhole · per-pixel Ellis null geodesics</span>
     </div>
     <div class="hdr-actions">
